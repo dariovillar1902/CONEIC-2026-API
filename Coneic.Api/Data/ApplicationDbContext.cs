@@ -33,7 +33,9 @@ namespace Coneic.Api.Data
             modelBuilder.Entity<User>().HasData(
                 new User { Id = 1, Email = "dvillar@frba.utn.edu.ar", Password = "admin", Role = "admin" },
                 new User { Id = 2, Email = "delegate@utn.edu.ar", Password = "demo", Role = "delegate", DelegationName = "UTN - Facultad Regional Buenos Aires" },
-                new User { Id = 3, Email = "test@visitor.com", Password = "demo", Role = "assistant" }
+                new User { Id = 3, Email = "test@visitor.com", Password = "demo", Role = "assistant" },
+                new User { Id = 4, Email = "spizzamus@frba.utn.edu.ar", Password = "admin", Role = "admin" },
+                new User { Id = 5, Email = "cpoggi@frba.utn.edu.ar", Password = "admin", Role = "admin" }
             );
         }
     }

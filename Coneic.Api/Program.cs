@@ -22,16 +22,28 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Bind to PORT env var (required by Render)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5091";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Apply migrations and seed data on startup
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
 }
 
-app.UseHttpsRedirection();
+// Configure the HTTP request pipeline.
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Skip HTTPS redirection in production (Render handles SSL at the edge)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
 app.UseCors("AllowAll");

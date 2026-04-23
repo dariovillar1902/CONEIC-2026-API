@@ -53,35 +53,57 @@ namespace Coneic.Api.Migrations
                     b.ToTable("Activities");
 
                     b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Bienvenida al XVII CONEIC",
-                            EndTime = new DateTime(2026, 10, 15, 10, 0, 0, 0, DateTimeKind.Unspecified),
-                            Location = "Auditorio Principal",
-                            StartTime = new DateTime(2026, 10, 15, 9, 0, 0, 0, DateTimeKind.Unspecified),
-                            Title = "Apertura"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Diseño moderno de puentes.",
-                            EndTime = new DateTime(2026, 10, 15, 12, 0, 0, 0, DateTimeKind.Unspecified),
-                            Location = "Auditorio Principal",
-                            SpeakerId = 1,
-                            StartTime = new DateTime(2026, 10, 15, 10, 30, 0, 0, DateTimeKind.Unspecified),
-                            Title = "Charla Magistral: Puentes"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Introducción a Building Information Modeling.",
-                            EndTime = new DateTime(2026, 10, 15, 16, 0, 0, 0, DateTimeKind.Unspecified),
-                            Location = "Sala A",
-                            SpeakerId = 2,
-                            StartTime = new DateTime(2026, 10, 15, 14, 0, 0, 0, DateTimeKind.Unspecified),
-                            Title = "Taller: BIM"
-                        });
+                        // Martes 4 ago
+                        new { Id = 1,  Description = "Registro de asistentes y entrega de kits de bienvenida.",                                                                                              EndTime = new DateTime(2026,8,4,10, 0,0), Location = "Hall Principal — UTN FRBA",       StartTime = new DateTime(2026,8,4, 9, 0,0), Title = "Acreditación y Bienvenida" },
+                        new { Id = 2,  Description = "Conferencia magistral de apertura con visión integral sobre los desafíos actuales y futuros de la ingeniería civil argentina.",                         EndTime = new DateTime(2026,8,4,13, 0,0), Location = "Auditorio Principal",              SpeakerId = 1, StartTime = new DateTime(2026,8,4,10, 0,0), Title = "Charla Inaugural: La Ingeniería Civil del Futuro" },
+                        new { Id = 3,  Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,4,14,30,0), Location = "Patio del Campus",                StartTime = new DateTime(2026,8,4,13, 0,0), Title = "Almuerzo" },
+                        new { Id = 4,  Description = "Aplicación de BIM en proyectos de infraestructura vial y edilicia: flujos de trabajo, software y casos reales.",                                        EndTime = new DateTime(2026,8,4,17, 0,0), Location = "Laboratorio de Informática",      SpeakerId = 3, StartTime = new DateTime(2026,8,4,14,30,0), Title = "Taller: BIM aplicado a Infraestructura" },
+                        new { Id = 5,  Description = "Criterios de diseño sísmico, normativa CIRSOC y análisis de estructuras ante solicitaciones dinámicas.",                                                 EndTime = new DateTime(2026,8,4,18,30,0), Location = "Sala de Estructuras",              SpeakerId = 1, StartTime = new DateTime(2026,8,4,17, 0,0), Title = "Taller: Diseño Sismorresistente" },
+                        new { Id = 6,  Description = "Cena de inicio del congreso con networking y presentación de delegaciones de todo el país.",                                                             EndTime = new DateTime(2026,8,4,22,30,0), Location = "Salón de Eventos — Sede Central", StartTime = new DateTime(2026,8,4,20, 0,0), Title = "Cena de Bienvenida" },
+                        // Miércoles 5 ago
+                        new { Id = 7,  Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,5, 9,30,0), Location = "Hall Principal",                  StartTime = new DateTime(2026,8,5, 9, 0,0), Title = "Acreditación" },
+                        new { Id = 8,  Description = "Panorama actual de la infraestructura hídrica en Argentina: cuencas, embalses y gestión del agua en un contexto de cambio climático.",                  EndTime = new DateTime(2026,8,5,12, 0,0), Location = "Auditorio Principal",              SpeakerId = 2, StartTime = new DateTime(2026,8,5, 9,30,0), Title = "Charla Magistral: Infraestructura Hídrica" },
+                        new { Id = 9,  Description = "Panel multidisciplinario sobre las obras más emblemáticas de Buenos Aires: subterráneos, autopistas, Puerto Madero y obras hidráulicas.",               EndTime = new DateTime(2026,8,5,13,30,0), Location = "Auditorio Principal",              StartTime = new DateTime(2026,8,5,12, 0,0), Title = "Panel: Obras Emblemáticas de Buenos Aires" },
+                        new { Id = 10, Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,5,15, 0,0), Location = "Patio del Campus",                StartTime = new DateTime(2026,8,5,13,30,0), Title = "Almuerzo" },
+                        new { Id = 11, Description = "Recorrido técnico guiado por las instalaciones y obras en curso del Puerto de Buenos Aires.",                                                            EndTime = new DateTime(2026,8,5,19, 0,0), Location = "Puerto Madero — Dique 4",          StartTime = new DateTime(2026,8,5,15, 0,0), Title = "Visita Técnica: Puerto de Buenos Aires" },
+                        new { Id = 12, Description = "Noche de integración federal con música, gastronomía regional y actividades culturales.",                                                                EndTime = new DateTime(2026,8,5,23, 0,0), Location = "Salón de Eventos — Sede Central", StartTime = new DateTime(2026,8,5,20,30,0), Title = "Peña Federal" },
+                        // Jueves 6 ago
+                        new { Id = 13, Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,6, 9,30,0), Location = "Hall Principal",                  StartTime = new DateTime(2026,8,6, 9, 0,0), Title = "Acreditación" },
+                        new { Id = 14, Description = "Exploración de hormigones especiales, geosintéticos y nanotecnología aplicados a la construcción moderna.",                                              EndTime = new DateTime(2026,8,6,12,30,0), Location = "Laboratorio de Materiales",       SpeakerId = 4, StartTime = new DateTime(2026,8,6, 9,30,0), Title = "Taller: Nuevos Materiales Constructivos" },
+                        new { Id = 15, Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,6,14, 0,0), Location = "Patio del Campus",                StartTime = new DateTime(2026,8,6,12,30,0), Title = "Almuerzo" },
+                        new { Id = 16, Description = "Intervención constructiva voluntaria en una comunidad local de la zona sur de Buenos Aires.",                                                            EndTime = new DateTime(2026,8,6,17, 0,0), Location = "Comunidad La Paloma — Zona Sur",  StartTime = new DateTime(2026,8,6,14, 0,0), Title = "Actividad Solidaria" },
+                        new { Id = 17, Description = "Reunión de representantes universitarios para tratar agenda de ANEIC, elección de sede 2027 y resoluciones.",                                           EndTime = new DateTime(2026,8,6,19, 0,0), Location = "Auditorio Principal",              StartTime = new DateTime(2026,8,6,17, 0,0), Title = "Asamblea ANEIC" },
+                        new { Id = 18, Description = "Noche temática con folklore porteño, tango y gastronomía bonaerense.",                                                                                  EndTime = new DateTime(2026,8,6,23, 0,0), Location = "Salón de Eventos — Sede Central", StartTime = new DateTime(2026,8,6,20,30,0), Title = "Noche Temática: Folklore Porteño" },
+                        // Viernes 7 ago
+                        new { Id = 19, Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,7, 9,30,0), Location = "Hall Principal",                  StartTime = new DateTime(2026,8,7, 9, 0,0), Title = "Acreditación" },
+                        new { Id = 20, Description = "Reflexión sobre sostenibilidad, cambio climático y el rol del ingeniero civil en la transición energética.",                                             EndTime = new DateTime(2026,8,7,12, 0,0), Location = "Auditorio Principal",              SpeakerId = 2, StartTime = new DateTime(2026,8,7, 9,30,0), Title = "Charla de Cierre: Sostenibilidad en la Ingeniería" },
+                        new { Id = 21, Description = "",                                                                                                                                                      EndTime = new DateTime(2026,8,7,13,30,0), Location = "Patio del Campus",                StartTime = new DateTime(2026,8,7,12, 0,0), Title = "Almuerzo" },
+                        new { Id = 22, Description = "Actividades recreativas, concursos y sorteos de premios especiales para los asistentes.",                                                                EndTime = new DateTime(2026,8,7,16, 0,0), Location = "Patio del Campus",                StartTime = new DateTime(2026,8,7,14, 0,0), Title = "Actividad Recreativa y Sorteos" },
+                        new { Id = 23, Description = "Ceremonia oficial de cierre del XVIII CONEIC: entrega de diplomas, reconocimientos y palabras de despedida.",                                            EndTime = new DateTime(2026,8,7,18, 0,0), Location = "Auditorio Principal",              StartTime = new DateTime(2026,8,7,16, 0,0), Title = "Acto de Clausura" });
+                });
+
+            modelBuilder.Entity("Coneic.Api.Models.PaymentBatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DelegationName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReceiptUrl")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PaymentBatches");
                 });
 
             modelBuilder.Entity("Coneic.Api.Models.Photo", b =>
@@ -154,6 +176,9 @@ namespace Coneic.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Lastname")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -167,6 +192,9 @@ namespace Coneic.Api.Migrations
 
                     b.Property<bool>("ParticipatedInJoreic")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("PaymentCondition")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("PaymentMethod")
                         .HasColumnType("TEXT");
@@ -229,24 +257,10 @@ namespace Coneic.Api.Migrations
                     b.ToTable("Speakers");
 
                     b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Bio = "Experto en diseño sismorresistente.",
-                            ImageUrl = "https://via.placeholder.com/150",
-                            LinkedInUrl = "#",
-                            Name = "Ing. Juan Pérez",
-                            Title = "Especialista en Estructuras"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Bio = "Investigadora en recursos hídricos.",
-                            ImageUrl = "https://via.placeholder.com/150",
-                            LinkedInUrl = "#",
-                            Name = "Dra. María González",
-                            Title = "Ingeniería Ambiental"
-                        });
+                        new { Id = 1, Bio = "Especialista en diseño sísmico y estructuras de gran escala con más de 20 años de trayectoria en obras de infraestructura.",                                    ImageUrl = "https://randomuser.me/api/portraits/men/32.jpg",   LinkedInUrl = "#", Name = "Ing. Roberto Fernández", Title = "Especialista en Estructuras y Sismología" },
+                        new { Id = 2, Bio = "Investigadora en hidráulica e ingeniería ambiental. Autora de numerosas publicaciones sobre gestión de recursos hídricos en la cuenca del Plata.",              ImageUrl = "https://randomuser.me/api/portraits/women/44.jpg", LinkedInUrl = "#", Name = "Dra. Laura Gómez",       Title = "Ingeniería Hidráulica y Ambiental" },
+                        new { Id = 3, Bio = "Referente nacional en implementación de BIM en proyectos de infraestructura vial y edilicia. Docente en UTN y UBA.",                                           ImageUrl = "https://randomuser.me/api/portraits/men/55.jpg",   LinkedInUrl = "#", Name = "Ing. Diego Torres",       Title = "BIM y Tecnología en la Construcción" },
+                        new { Id = 4, Bio = "Investigadora del CONICET en nuevos materiales constructivos: hormigones especiales, geosintéticos y nanotecnología aplicada.",                               ImageUrl = "https://randomuser.me/api/portraits/women/61.jpg", LinkedInUrl = "#", Name = "Ing. Valeria Ríos",       Title = "Nuevos Materiales y Nanotecnología" });
                 });
 
             modelBuilder.Entity("Coneic.Api.Models.User", b =>

@@ -53,6 +53,10 @@ namespace Coneic.Api.Models
         public string? PaymentMethod { get; set; } // MercadoPago, Transferencia, Efectivo
         public decimal AmountPaid { get; set; }
         public decimal AmountPending { get; set; }
+
+        // Delegate management fields
+        public bool IsEnabled { get; set; } = false;
+        public string? PaymentCondition { get; set; } // null, "PagoCompleto", "PrimeraCuota", "SegundaCuota"
     }
     
     public enum RegistrationStatus 

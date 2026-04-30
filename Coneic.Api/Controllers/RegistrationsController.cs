@@ -2,7 +2,6 @@ using ClosedXML.Excel;
 using Coneic.Api.Data;
 using Coneic.Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Coneic.Api.Controllers
 {
@@ -10,93 +9,79 @@ namespace Coneic.Api.Controllers
     [Route("api/[controller]")]
     public class RegistrationsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly JsonDataStore _store;
 
-        public RegistrationsController(ApplicationDbContext context)
+        public RegistrationsController(JsonDataStore store)
         {
-            _context = context;
+            _store = store;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Registration registration)
+        public IActionResult Create([FromBody] Registration registration)
         {
-            registration.CreatedAt = DateTime.Now;
-            registration.Status = "Pending";
-
-            _context.Registrations.Add(registration);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetById), new { id = registration.Id }, registration);
+            var created = _store.AddRegistration(registration);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public IActionResult GetById(int id)
         {
-            var reg = await _context.Registrations.FindAsync(id);
+            var reg = _store.GetRegistrationById(id);
             if (reg == null) return NotFound();
             return Ok(reg);
         }
 
         // For Admin
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Registration>>> GetAll()
+        public ActionResult<IEnumerable<Registration>> GetAll()
         {
-            return await _context.Registrations.ToListAsync();
+            return Ok(_store.GetAllRegistrations());
         }
 
         // For Delegates
         [HttpGet("delegation")]
-        public async Task<ActionResult<IEnumerable<Registration>>> GetByDelegation([FromQuery] string name)
+        public ActionResult<IEnumerable<Registration>> GetByDelegation([FromQuery] string name)
         {
-            return await _context.Registrations
-                .Where(r => r.Faculty == name)
-                .ToListAsync();
+            return Ok(_store.GetRegistrationsByFaculty(name));
         }
 
         [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
+        public IActionResult UpdateStatus(int id, [FromBody] string status)
         {
-            var reg = await _context.Registrations.FindAsync(id);
-            if (reg == null) return NotFound();
-
-            reg.Status = status;
-            await _context.SaveChangesAsync();
-            return Ok(reg);
+            if (!_store.UpdateStatus(id, status))
+                return NotFound();
+            return Ok(_store.GetRegistrationById(id));
         }
 
-        // Update enabled flag and payment condition (delegate action)
         [HttpPatch("{id}/payment")]
-        public async Task<IActionResult> UpdatePayment(int id, [FromBody] UpdatePaymentDto dto)
+        public IActionResult UpdatePayment(int id, [FromBody] UpdatePaymentDto dto)
         {
-            var reg = await _context.Registrations.FindAsync(id);
-            if (reg == null) return NotFound();
-
-            reg.IsEnabled = dto.IsEnabled;
-            reg.PaymentCondition = dto.PaymentCondition;
-            await _context.SaveChangesAsync();
-            return Ok(reg);
+            if (!_store.UpdatePayment(id, dto.IsEnabled, dto.PaymentCondition))
+                return NotFound();
+            return Ok(_store.GetRegistrationById(id));
         }
 
         // Export all registrations to Excel (admin)
         [HttpGet("export")]
-        public async Task<IActionResult> ExportAll()
+        public IActionResult ExportAll()
         {
-            var registrations = await _context.Registrations.ToListAsync();
+            var registrations = _store.GetAllRegistrations();
             var fileBytes = BuildExcel(registrations, "Todas las Inscripciones");
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "inscripciones.xlsx");
+            return File(fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "inscripciones.xlsx");
         }
 
         // Export registrations by delegation to Excel (delegate)
         [HttpGet("export/delegation")]
-        public async Task<IActionResult> ExportByDelegation([FromQuery] string name)
+        public IActionResult ExportByDelegation([FromQuery] string name)
         {
-            var registrations = await _context.Registrations
-                .Where(r => r.Faculty == name)
-                .ToListAsync();
-
+            var registrations = _store.GetRegistrationsByFaculty(name);
             var fileBytes = BuildExcel(registrations, name);
             var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"inscripciones_{safeName}.xlsx");
+            return File(fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"inscripciones_{safeName}.xlsx");
         }
 
         private static byte[] BuildExcel(IEnumerable<Registration> registrations, string sheetTitle)
@@ -104,7 +89,6 @@ namespace Coneic.Api.Controllers
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Inscripciones");
 
-            // Header row
             var headers = new[]
             {
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
@@ -122,7 +106,6 @@ namespace Coneic.Api.Controllers
                 cell.Style.Font.FontColor = XLColor.White;
             }
 
-            // Data rows
             int row = 2;
             foreach (var r in registrations)
             {

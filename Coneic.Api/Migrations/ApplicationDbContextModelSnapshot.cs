@@ -300,7 +300,7 @@ namespace Coneic.Api.Migrations
                         {
                             Id = 2,
                             DelegationName = "UTN - Facultad Regional Buenos Aires",
-                            Email = "delegate@utn.edu.ar",
+                            Email = "delegate@frba.utn.edu.ar",
                             Password = "demo",
                             Role = "delegate"
                         },
@@ -324,6 +324,14 @@ namespace Coneic.Api.Migrations
                             Email = "cpoggi@frba.utn.edu.ar",
                             Password = "admin",
                             Role = "admin"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            DelegationName = "UTN - Facultad Regional General Pacheco",
+                            Email = "delegate@frgp.utn.edu.ar",
+                            Password = "demo",
+                            Role = "delegate"
                         });
                 });
 

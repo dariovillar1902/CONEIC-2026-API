@@ -10,18 +10,43 @@ namespace Coneic.Api.Controllers
     public class RegistrationsController : ControllerBase
     {
         private readonly JsonDataStore _store;
+        private readonly IWebHostEnvironment _env;
 
-        public RegistrationsController(JsonDataStore store)
+        public RegistrationsController(JsonDataStore store, IWebHostEnvironment env)
         {
             _store = store;
+            _env = env;
         }
+
+        // ── Create ──────────────────────────────────────────────────────────────
 
         [HttpPost]
         public IActionResult Create([FromBody] Registration registration)
         {
             var created = _store.AddRegistration(registration);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            if (created == null)
+                return Conflict(new { message = "Ya existe una inscripción con ese email." });
+
+            // Auto-create an "assistant" account so the attendee can log in.
+            // The generated password is returned once; the user must change it on first login.
+            var generatedPassword = GeneratePassword();
+            _store.CreateUserFromRegistration(registration.Email, generatedPassword);
+
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, new
+            {
+                registration = created,
+                generatedPassword,  // frontend uses this to send via EmailJS
+            });
         }
+
+        private static string GeneratePassword()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+            var rng = Random.Shared;
+            return new string(Enumerable.Range(0, 10).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
+        }
+
+        // ── Read ────────────────────────────────────────────────────────────────
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
@@ -31,60 +56,139 @@ namespace Coneic.Api.Controllers
             return Ok(reg);
         }
 
-        // For Admin
         [HttpGet]
         public ActionResult<IEnumerable<Registration>> GetAll()
-        {
-            return Ok(_store.GetAllRegistrations());
-        }
+            => Ok(_store.GetAllRegistrations());
 
-        // For Delegates
         [HttpGet("delegation")]
         public ActionResult<IEnumerable<Registration>> GetByDelegation([FromQuery] string name)
+            => Ok(_store.GetRegistrationsByFaculty(name));
+
+        /// <summary>Returns all registrations for a delegate's managed faculties (looked up by email).</summary>
+        [HttpGet("delegate")]
+        public ActionResult<IEnumerable<Registration>> GetByDelegate([FromQuery] string email)
         {
-            return Ok(_store.GetRegistrationsByFaculty(name));
+            var user = _store.FindUserByEmail(email);
+            if (user == null) return NotFound(new { message = "Delegate not found." });
+
+            var faculties = user.ManagedFaculties.Count > 0
+                ? user.ManagedFaculties
+                : (user.DelegationName != null ? new List<string> { user.DelegationName } : new List<string>());
+
+            return Ok(_store.GetRegistrationsByFaculties(faculties));
         }
+
+        // ── Update ──────────────────────────────────────────────────────────────
 
         [HttpPut("{id}/status")]
         public IActionResult UpdateStatus(int id, [FromBody] string status)
         {
-            if (!_store.UpdateStatus(id, status))
-                return NotFound();
+            if (!_store.UpdateStatus(id, status)) return NotFound();
             return Ok(_store.GetRegistrationById(id));
         }
 
         [HttpPatch("{id}/payment")]
         public IActionResult UpdatePayment(int id, [FromBody] UpdatePaymentDto dto)
         {
-            if (!_store.UpdatePayment(id, dto.IsEnabled, dto.PaymentCondition))
-                return NotFound();
+            if (!_store.UpdatePayment(id, dto.IsEnabled, dto.PaymentCondition)) return NotFound();
             return Ok(_store.GetRegistrationById(id));
         }
 
-        // Export all registrations to Excel (admin)
+        [HttpPatch("{id}/amounts")]
+        public IActionResult UpdateAmounts(int id, [FromBody] UpdateAmountsDto dto)
+        {
+            if (!_store.UpdateAmounts(id, dto.AmountPaid, dto.AmountPending)) return NotFound();
+            return Ok(_store.GetRegistrationById(id));
+        }
+
+        [HttpPatch("{id}/observations")]
+        public IActionResult UpdateObservations(int id, [FromBody] string? observations)
+        {
+            if (!_store.UpdateObservations(id, observations)) return NotFound();
+            return Ok(_store.GetRegistrationById(id));
+        }
+
+        // ── File upload (comprobante grupal adjunto) ────────────────────────────
+
+        [HttpPost("upload")]
+        [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
+        public async Task<IActionResult> UploadFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No se recibió ningún archivo." });
+
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "application/pdf" };
+            if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                return BadRequest(new { message = "Solo se permiten imágenes (JPG, PNG) y PDFs." });
+
+            var uploadsDir = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "uploads");
+            Directory.CreateDirectory(uploadsDir);
+
+            var ext = Path.GetExtension(file.FileName).ToLower();
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using (var stream = System.IO.File.Create(filePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var url = $"{baseUrl}/uploads/{fileName}";
+
+            return Ok(new { url });
+        }
+
+        // ── Delete ──────────────────────────────────────────────────────────────
+
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            if (!_store.Delete(id)) return NotFound();
+            return NoContent();
+        }
+
+        // ── Excel exports ───────────────────────────────────────────────────────
+
         [HttpGet("export")]
         public IActionResult ExportAll()
         {
             var registrations = _store.GetAllRegistrations();
-            var fileBytes = BuildExcel(registrations, "Todas las Inscripciones");
+            var fileBytes = BuildExcel(registrations);
             return File(fileBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "inscripciones.xlsx");
         }
 
-        // Export registrations by delegation to Excel (delegate)
         [HttpGet("export/delegation")]
         public IActionResult ExportByDelegation([FromQuery] string name)
         {
             var registrations = _store.GetRegistrationsByFaculty(name);
-            var fileBytes = BuildExcel(registrations, name);
+            var fileBytes = BuildExcel(registrations);
             var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
             return File(fileBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"inscripciones_{safeName}.xlsx");
         }
 
-        private static byte[] BuildExcel(IEnumerable<Registration> registrations, string sheetTitle)
+        [HttpGet("export/delegate")]
+        public IActionResult ExportByDelegate([FromQuery] string email)
+        {
+            var user = _store.FindUserByEmail(email);
+            if (user == null) return NotFound();
+
+            var faculties = user.ManagedFaculties.Count > 0
+                ? user.ManagedFaculties
+                : (user.DelegationName != null ? new List<string> { user.DelegationName } : new List<string>());
+
+            var registrations = _store.GetRegistrationsByFaculties(faculties);
+            var fileBytes = BuildExcel(registrations);
+            return File(fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"inscripciones_delegado.xlsx");
+        }
+
+        private static byte[] BuildExcel(IEnumerable<Registration> registrations)
         {
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Inscripciones");
@@ -94,7 +198,7 @@ namespace Coneic.Api.Controllers
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
                 "Grupo Sanguíneo", "Afecciones", "Contacto Emergencia", "Tel. Emergencia",
                 "Etapa", "Precio", "Estado", "Habilitado", "Condición de Pago",
-                "Monto Pagado", "Monto Pendiente", "Método de Pago", "Comprobante", "Fecha Inscripción"
+                "Monto Pagado", "Monto Pendiente", "Método de Pago", "Observaciones", "Fecha Inscripción"
             };
 
             for (int i = 0; i < headers.Length; i++)
@@ -128,7 +232,7 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 17).Value = (double)r.AmountPaid;
                 ws.Cell(row, 18).Value = (double)r.AmountPending;
                 ws.Cell(row, 19).Value = r.PaymentMethod ?? "";
-                ws.Cell(row, 20).Value = r.PaymentReceiptUrl ?? "";
+                ws.Cell(row, 20).Value = r.Observations ?? "";
                 ws.Cell(row, 21).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
                 row++;
             }
@@ -145,5 +249,11 @@ namespace Coneic.Api.Controllers
     {
         public bool IsEnabled { get; set; }
         public string? PaymentCondition { get; set; }
+    }
+
+    public class UpdateAmountsDto
+    {
+        public decimal AmountPaid { get; set; }
+        public decimal AmountPending { get; set; }
     }
 }

@@ -1,7 +1,6 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Coneic.Api.Controllers
 {
@@ -9,69 +8,58 @@ namespace Coneic.Api.Controllers
     [Route("api/[controller]")]
     public class PaymentBatchesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly JsonDataStore _store;
 
-        public PaymentBatchesController(ApplicationDbContext context)
+        public PaymentBatchesController(JsonDataStore store)
         {
-            _context = context;
+            _store = store;
         }
 
-        // Get all batches for a delegation
-        [HttpGet("delegation")]
-        public async Task<ActionResult<IEnumerable<PaymentBatch>>> GetByDelegation([FromQuery] string name)
+        /// <summary>Get all batches for the logged-in delegate (by email query param).</summary>
+        [HttpGet("delegate")]
+        public ActionResult<IEnumerable<PaymentBatch>> GetByDelegate([FromQuery] string email)
         {
-            return await _context.PaymentBatches
-                .Where(b => b.DelegationName == name)
-                .OrderByDescending(b => b.CreatedAt)
-                .ToListAsync();
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest(new { message = "Se requiere el email del delegado." });
+
+            return Ok(_store.GetPaymentBatchesByDelegate(email));
         }
 
-        // Get all batches (admin)
+        /// <summary>Get all batches — admin use.</summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PaymentBatch>>> GetAll()
+        public ActionResult<IEnumerable<PaymentBatch>> GetAll()
+            => Ok(_store.GetAllPaymentBatches());
+
+        [HttpGet("{id}")]
+        public IActionResult GetById(int id)
         {
-            return await _context.PaymentBatches
-                .OrderByDescending(b => b.CreatedAt)
-                .ToListAsync();
+            var batch = _store.GetPaymentBatchById(id);
+            if (batch == null) return NotFound();
+            return Ok(batch);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] PaymentBatch batch)
+        public IActionResult Create([FromBody] PaymentBatch batch)
         {
-            batch.CreatedAt = DateTime.Now;
-            _context.PaymentBatches.Add(batch);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetById), new { id = batch.Id }, batch);
-        }
+            if (string.IsNullOrWhiteSpace(batch.DelegateEmail))
+                return BadRequest(new { message = "DelegateEmail es requerido." });
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var batch = await _context.PaymentBatches.FindAsync(id);
-            if (batch == null) return NotFound();
-            return Ok(batch);
+            var created = _store.AddPaymentBatch(batch);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] PaymentBatch updated)
+        public IActionResult Update(int id, [FromBody] PaymentBatch updated)
         {
-            var batch = await _context.PaymentBatches.FindAsync(id);
-            if (batch == null) return NotFound();
-
-            batch.ReceiptUrl = updated.ReceiptUrl;
-            batch.Description = updated.Description;
-            await _context.SaveChangesAsync();
-            return Ok(batch);
+            var result = _store.UpdatePaymentBatch(id, updated);
+            if (result == null) return NotFound();
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public IActionResult Delete(int id)
         {
-            var batch = await _context.PaymentBatches.FindAsync(id);
-            if (batch == null) return NotFound();
-
-            _context.PaymentBatches.Remove(batch);
-            await _context.SaveChangesAsync();
+            if (!_store.DeletePaymentBatch(id)) return NotFound();
             return NoContent();
         }
     }

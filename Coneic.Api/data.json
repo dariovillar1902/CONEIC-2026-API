@@ -5,35 +5,65 @@
       "email": "dvillar@frba.utn.edu.ar",
       "password": "admin",
       "role": "admin",
-      "delegationName": null
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": false
     },
     {
       "id": 2,
       "email": "spizzamus@frba.utn.edu.ar",
       "password": "admin",
       "role": "admin",
-      "delegationName": null
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": false
     },
     {
       "id": 3,
       "email": "cpoggi@frba.utn.edu.ar",
       "password": "admin",
       "role": "admin",
-      "delegationName": null
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": false
     },
     {
       "id": 4,
       "email": "delegate@frba.utn.edu.ar",
       "password": "demo",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional Buenos Aires"
+      "delegationName": "UTN - Facultad Regional Buenos Aires",
+      "filial": "Este",
+      "managedFaculties": [
+        "UTN - Facultad Regional Buenos Aires",
+        "UTN - Facultad Regional Avellaneda",
+        "Universidad de Buenos Aires",
+        "Universidad de Belgrano",
+        "Universidad Católica Argentina",
+        "Universidad de la Defensa Nacional",
+        "UTN - Facultad Regional Concepción del Uruguay",
+        "UTN - Facultad Regional Concordia",
+        "Universidad Nacional de la Matanza",
+        "Universidad Nacional de La Plata",
+        "UTN - Facultad Regional La Plata",
+        "Universidad Nacional de Morón"
+      ],
+      "mustChangePassword": false
     },
     {
       "id": 5,
       "email": "delegate@frgp.utn.edu.ar",
       "password": "demo",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional General Pacheco"
+      "delegationName": "UTN - Facultad Regional General Pacheco",
+      "filial": "Este",
+      "managedFaculties": [
+        "UTN - Facultad Regional General Pacheco"
+      ],
+      "mustChangePassword": false
     }
   ],
   "registrations": [
@@ -60,7 +90,8 @@
       "amountPaid": 100000,
       "amountPending": 0,
       "isEnabled": true,
-      "paymentCondition": "PagoCompleto"
+      "paymentCondition": "Pagó Completo",
+      "observations": null
     },
     {
       "id": 2,
@@ -85,7 +116,8 @@
       "amountPaid": 55000,
       "amountPending": 55000,
       "isEnabled": true,
-      "paymentCondition": "PrimeraCuota"
+      "paymentCondition": "Pagó 1° Cuota",
+      "observations": null
     },
     {
       "id": 3,
@@ -110,7 +142,8 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": null
+      "paymentCondition": "No Pagó",
+      "observations": null
     },
     {
       "id": 4,
@@ -135,7 +168,8 @@
       "amountPaid": 100000,
       "amountPending": 0,
       "isEnabled": true,
-      "paymentCondition": "PagoCompleto"
+      "paymentCondition": "Pagó Completo",
+      "observations": null
     },
     {
       "id": 5,
@@ -160,7 +194,8 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": null
+      "paymentCondition": "No Pagó",
+      "observations": null
     },
     {
       "id": 6,
@@ -185,7 +220,9 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": null
+      "paymentCondition": "No Pagó",
+      "observations": null
     }
-  ]
+  ],
+  "paymentBatches": []
 }

@@ -5,7 +5,7 @@ namespace Coneic.Api.Data
 {
     /// <summary>
     /// In-memory data store seeded from data.json.
-    /// Replaces EF Core for Users and Registrations.
+    /// Replaces EF Core for Users, Registrations, and PaymentBatches.
     /// Changes are persisted back to disk and survive process restarts,
     /// but the committed data.json is the authoritative seed on each fresh deploy.
     /// </summary>
@@ -14,7 +14,9 @@ namespace Coneic.Api.Data
         private readonly string _filePath;
         private readonly List<User> _users;
         private readonly List<Registration> _registrations;
+        private readonly List<PaymentBatch> _paymentBatches;
         private int _nextRegistrationId;
+        private int _nextBatchId;
         private readonly object _lock = new();
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -43,8 +45,13 @@ namespace Coneic.Api.Data
 
             _users = root.Users;
             _registrations = root.Registrations;
+            _paymentBatches = root.PaymentBatches;
+
             _nextRegistrationId = _registrations.Count > 0
                 ? _registrations.Max(r => r.Id) + 1
+                : 1;
+            _nextBatchId = _paymentBatches.Count > 0
+                ? _paymentBatches.Max(b => b.Id) + 1
                 : 1;
         }
 
@@ -54,6 +61,56 @@ namespace Coneic.Api.Data
             => _users.FirstOrDefault(u =>
                 string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)
                 && u.Password == password);
+
+        public User? FindUserByEmail(string email)
+            => _users.FirstOrDefault(u =>
+                string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// Creates an "assistant" user account for a newly registered attendee.
+        /// Returns the new user, or null if the email already has an account.
+        /// </summary>
+        public User? CreateUserFromRegistration(string email, string password)
+        {
+            lock (_lock)
+            {
+                if (_users.Any(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)))
+                    return null;
+
+                var newUser = new User
+                {
+                    Id = _users.Count > 0 ? _users.Max(u => u.Id) + 1 : 1,
+                    Email = email,
+                    Password = password,
+                    Role = "assistant",
+                    MustChangePassword = true,
+                };
+
+                _users.Add(newUser);
+                Persist();
+                return newUser;
+            }
+        }
+
+        /// <summary>
+        /// Changes a user's password. Returns false if current password does not match.
+        /// </summary>
+        public bool ChangePassword(string email, string currentPassword, string newPassword)
+        {
+            lock (_lock)
+            {
+                var user = _users.FirstOrDefault(u =>
+                    string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)
+                    && u.Password == currentPassword);
+
+                if (user == null) return false;
+
+                user.Password = newPassword;
+                user.MustChangePassword = false;
+                Persist();
+                return true;
+            }
+        }
 
         // ── Registrations ──────────────────────────────────────────────────────
 
@@ -72,15 +129,32 @@ namespace Coneic.Api.Data
             }
         }
 
+        /// <summary>Returns registrations for all faculties in the given list (delegate multi-faculty view).</summary>
+        public List<Registration> GetRegistrationsByFaculties(IEnumerable<string> faculties)
+        {
+            lock (_lock)
+            {
+                var set = new HashSet<string>(faculties, StringComparer.OrdinalIgnoreCase);
+                return _registrations
+                    .Where(r => set.Contains(r.Faculty ?? string.Empty))
+                    .ToList();
+            }
+        }
+
         public Registration? GetRegistrationById(int id)
         {
             lock (_lock) { return _registrations.FirstOrDefault(r => r.Id == id); }
         }
 
-        public Registration AddRegistration(Registration reg)
+        /// <returns>The created registration, or null if the email already exists.</returns>
+        public Registration? AddRegistration(Registration reg)
         {
             lock (_lock)
             {
+                var duplicate = _registrations.Any(r =>
+                    string.Equals(r.Email, reg.Email, StringComparison.OrdinalIgnoreCase));
+                if (duplicate) return null;
+
                 reg.Id = _nextRegistrationId++;
                 reg.CreatedAt = DateTime.Now;
                 reg.Status = "Pending";
@@ -116,13 +190,122 @@ namespace Coneic.Api.Data
             }
         }
 
+        public bool UpdateAmounts(int id, decimal amountPaid, decimal amountPending)
+        {
+            lock (_lock)
+            {
+                var reg = _registrations.FirstOrDefault(r => r.Id == id);
+                if (reg == null) return false;
+                reg.AmountPaid = amountPaid;
+                reg.AmountPending = amountPending;
+                Persist();
+                return true;
+            }
+        }
+
+        public bool UpdateObservations(int id, string? observations)
+        {
+            lock (_lock)
+            {
+                var reg = _registrations.FirstOrDefault(r => r.Id == id);
+                if (reg == null) return false;
+                reg.Observations = observations;
+                Persist();
+                return true;
+            }
+        }
+
+        public bool Delete(int id)
+        {
+            lock (_lock)
+            {
+                var reg = _registrations.FirstOrDefault(r => r.Id == id);
+                if (reg == null) return false;
+                _registrations.Remove(reg);
+                Persist();
+                return true;
+            }
+        }
+
+        // ── PaymentBatches ─────────────────────────────────────────────────────
+
+        /// <summary>All batches for a specific delegate (by email).</summary>
+        public List<PaymentBatch> GetPaymentBatchesByDelegate(string delegateEmail)
+        {
+            lock (_lock)
+            {
+                return _paymentBatches
+                    .Where(b => string.Equals(b.DelegateEmail, delegateEmail, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(b => b.CreatedAt)
+                    .ToList();
+            }
+        }
+
+        /// <summary>All batches (admin view).</summary>
+        public List<PaymentBatch> GetAllPaymentBatches()
+        {
+            lock (_lock)
+            {
+                return _paymentBatches.OrderByDescending(b => b.CreatedAt).ToList();
+            }
+        }
+
+        public PaymentBatch? GetPaymentBatchById(int id)
+        {
+            lock (_lock) { return _paymentBatches.FirstOrDefault(b => b.Id == id); }
+        }
+
+        public PaymentBatch AddPaymentBatch(PaymentBatch batch)
+        {
+            lock (_lock)
+            {
+                batch.Id = _nextBatchId++;
+                batch.CreatedAt = DateTime.Now;
+                _paymentBatches.Add(batch);
+                Persist();
+            }
+            return batch;
+        }
+
+        public PaymentBatch? UpdatePaymentBatch(int id, PaymentBatch updated)
+        {
+            lock (_lock)
+            {
+                var existing = _paymentBatches.FirstOrDefault(b => b.Id == id);
+                if (existing == null) return null;
+
+                existing.ReceiptUrl = updated.ReceiptUrl;
+                existing.Description = updated.Description;
+                existing.Assignments = updated.Assignments;
+                Persist();
+                return existing;
+            }
+        }
+
+        public bool DeletePaymentBatch(int id)
+        {
+            lock (_lock)
+            {
+                var batch = _paymentBatches.FirstOrDefault(b => b.Id == id);
+                if (batch == null) return false;
+                _paymentBatches.Remove(batch);
+                Persist();
+                return true;
+            }
+        }
+
         // ── Persistence ────────────────────────────────────────────────────────
 
         private void Persist()
         {
             try
             {
-                var root = new JsonDataRoot { Users = _users, Registrations = _registrations };
+                var root = new JsonDataRoot
+                {
+                    Users = _users,
+                    Registrations = _registrations,
+                    PaymentBatches = _paymentBatches,
+                };
                 var json = JsonSerializer.Serialize(root, JsonOptions);
                 File.WriteAllText(_filePath, json);
             }
@@ -138,5 +321,6 @@ namespace Coneic.Api.Data
     {
         public List<User> Users { get; set; } = new();
         public List<Registration> Registrations { get; set; } = new();
+        public List<PaymentBatch> PaymentBatches { get; set; } = new();
     }
 }

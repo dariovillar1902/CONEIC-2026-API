@@ -57,6 +57,9 @@ namespace Coneic.Api.Models
         // Delegate management fields
         public bool IsEnabled { get; set; } = false;
         public string? PaymentCondition { get; set; } // null, "PagoCompleto", "PrimeraCuota", "SegundaCuota"
+
+        // Free-text notes visible to delegates (replaces the old per-registration comprobante link)
+        public string? Observations { get; set; }
     }
     
     public enum RegistrationStatus 

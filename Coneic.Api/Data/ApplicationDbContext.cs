@@ -9,17 +9,15 @@ namespace Coneic.Api.Data
         {
         }
 
+        // Users, Registrations, and PaymentBatches are managed by JsonDataStore — not EF Core.
         public DbSet<Speaker> Speakers { get; set; }
         public DbSet<Activity> Activities { get; set; }
-        public DbSet<User> Users { get; set; }
-        public DbSet<Registration> Registrations { get; set; }
         public DbSet<Photo> Photos { get; set; }
-        public DbSet<PaymentBatch> PaymentBatches { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            
+
             modelBuilder.Entity<Speaker>().HasData(
                 new Speaker { Id = 1, Name = "Ing. Roberto Fernández", Title = "Especialista en Estructuras y Sismología",    Bio = "Especialista en diseño sísmico y estructuras de gran escala con más de 20 años de trayectoria en obras de infraestructura.",                                                                     ImageUrl = "https://randomuser.me/api/portraits/men/32.jpg",   LinkedInUrl = "#" },
                 new Speaker { Id = 2, Name = "Dra. Laura Gómez",       Title = "Ingeniería Hidráulica y Ambiental",           Bio = "Investigadora en hidráulica e ingeniería ambiental. Autora de numerosas publicaciones sobre gestión de recursos hídricos en la cuenca del Plata.",                                    ImageUrl = "https://randomuser.me/api/portraits/women/44.jpg", LinkedInUrl = "#" },
@@ -57,13 +55,6 @@ namespace Coneic.Api.Data
                 new Activity { Id = 23, Title = "Acto de Clausura",                             Description = "Ceremonia oficial de cierre del XVIII CONEIC: entrega de diplomas, reconocimientos y palabras de despedida.",                                   StartTime = new DateTime(2026,8,7,16, 0,0), EndTime = new DateTime(2026,8,7,18, 0,0), Location = "Auditorio Principal",              SpeakerId = null }
             );
 
-            modelBuilder.Entity<User>().HasData(
-                new User { Id = 1, Email = "dvillar@frba.utn.edu.ar", Password = "admin", Role = "admin" },
-                new User { Id = 2, Email = "delegate@utn.edu.ar", Password = "demo", Role = "delegate", DelegationName = "UTN - Facultad Regional Buenos Aires" },
-                new User { Id = 3, Email = "test@visitor.com", Password = "demo", Role = "assistant" },
-                new User { Id = 4, Email = "spizzamus@frba.utn.edu.ar", Password = "admin", Role = "admin" },
-                new User { Id = 5, Email = "cpoggi@frba.utn.edu.ar", Password = "admin", Role = "admin" }
-            );
         }
     }
 }

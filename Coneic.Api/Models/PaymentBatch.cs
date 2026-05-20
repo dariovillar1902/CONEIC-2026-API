@@ -27,6 +27,9 @@ namespace Coneic.Api.Models
         public List<BatchAssignment> Assignments { get; set; } = new();
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        /// <summary>Whether the delegate requested an invoice for this batch.</summary>
+        public bool NeedsInvoice { get; set; } = false;
     }
 
     /// <summary>Links one registration to a specific payment type within a batch.</summary>
@@ -39,6 +42,6 @@ namespace Coneic.Api.Models
         public decimal Amount { get; set; }
 
         /// <summary>"Pagó Completo" | "Pagó 1° Cuota" | "No Pagó"</summary>
-        public string PaymentType { get; set; } = string.Empty;
+        public string? PaymentType { get; set; }
     }
 }

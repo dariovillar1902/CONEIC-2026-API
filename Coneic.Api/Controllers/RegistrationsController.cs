@@ -108,6 +108,14 @@ namespace Coneic.Api.Controllers
             return Ok(_store.GetRegistrationById(id));
         }
 
+        /// <summary>Full registration update (all editable fields). Used by admin and delegate edit modals.</summary>
+        [HttpPut("{id}")]
+        public IActionResult Update(int id, [FromBody] Registration updated)
+        {
+            if (!_store.UpdateRegistration(id, updated)) return NotFound();
+            return Ok(_store.GetRegistrationById(id));
+        }
+
         // ── File upload (comprobante grupal adjunto) ────────────────────────────
 
         [HttpPost("upload")]

@@ -215,6 +215,35 @@ namespace Coneic.Api.Data
             }
         }
 
+        public bool UpdateRegistration(int id, Registration updated)
+        {
+            lock (_lock)
+            {
+                var reg = _registrations.FirstOrDefault(r => r.Id == id);
+                if (reg == null) return false;
+                // Update all editable fields (preserve Id, CreatedAt, Status, IsEnabled, PaymentCondition)
+                reg.Name                  = updated.Name;
+                reg.Lastname              = updated.Lastname;
+                reg.Dni                   = updated.Dni;
+                reg.Phone                 = updated.Phone;
+                reg.Email                 = updated.Email;
+                reg.Faculty               = updated.Faculty;
+                reg.BloodType             = updated.BloodType;
+                reg.MedicalConditions     = updated.MedicalConditions;
+                reg.EmergencyContactName  = updated.EmergencyContactName;
+                reg.EmergencyContactPhone = updated.EmergencyContactPhone;
+                reg.StageName             = updated.StageName;
+                reg.Price                 = updated.Price;
+                reg.ParticipatedInJoreic  = updated.ParticipatedInJoreic;
+                reg.PaymentMethod         = updated.PaymentMethod;
+                reg.AmountPaid            = updated.AmountPaid;
+                reg.AmountPending         = updated.AmountPending;
+                reg.Observations          = updated.Observations;
+                Persist();
+                return true;
+            }
+        }
+
         public bool Delete(int id)
         {
             lock (_lock)

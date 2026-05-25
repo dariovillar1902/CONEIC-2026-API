@@ -27,16 +27,7 @@ namespace Coneic.Api.Controllers
             if (created == null)
                 return Conflict(new { message = "Ya existe una inscripción con ese email." });
 
-            // Auto-create an "assistant" account so the attendee can log in.
-            // The generated password is returned once; the user must change it on first login.
-            var generatedPassword = GeneratePassword();
-            _store.CreateUserFromRegistration(registration.Email, generatedPassword);
-
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, new
-            {
-                registration = created,
-                generatedPassword,  // frontend uses this to send via EmailJS
-            });
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { registration = created });
         }
 
         private static string GeneratePassword()
@@ -84,7 +75,16 @@ namespace Coneic.Api.Controllers
         public IActionResult UpdateStatus(int id, [FromBody] string status)
         {
             if (!_store.UpdateStatus(id, status)) return NotFound();
-            return Ok(_store.GetRegistrationById(id));
+            var reg = _store.GetRegistrationById(id);
+
+            if (status == "Paid" && reg != null)
+            {
+                var generatedPassword = GeneratePassword();
+                _store.CreateUserFromRegistration(reg.Email, generatedPassword);
+                return Ok(new { registration = reg, generatedPassword });
+            }
+
+            return Ok(reg);
         }
 
         [HttpPatch("{id}/payment")]

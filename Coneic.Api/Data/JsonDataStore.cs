@@ -28,16 +28,35 @@ namespace Coneic.Api.Data
 
         public JsonDataStore(IWebHostEnvironment env)
         {
-            // Look for data.json next to the executable first, then fall back to content root
-            var baseDir = AppContext.BaseDirectory;
-            var contentRoot = env.ContentRootPath;
+            // DATA_FILE_PATH env var lets production environments (Azure, Render) keep
+            // the live data.json outside the deployment directory so it survives redeploys.
+            var overridePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
 
-            _filePath = File.Exists(Path.Combine(baseDir, "data.json"))
-                ? Path.Combine(baseDir, "data.json")
-                : Path.Combine(contentRoot, "data.json");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                // If the override path doesn't exist yet, seed it from the committed data.json
+                if (!File.Exists(overridePath))
+                {
+                    var seedPath = File.Exists(Path.Combine(AppContext.BaseDirectory, "data.json"))
+                        ? Path.Combine(AppContext.BaseDirectory, "data.json")
+                        : Path.Combine(env.ContentRootPath, "data.json");
+                    Directory.CreateDirectory(Path.GetDirectoryName(overridePath)!);
+                    File.Copy(seedPath, overridePath);
+                }
+                _filePath = overridePath;
+            }
+            else
+            {
+                // Local dev: look next to the executable, then content root
+                var baseDir = AppContext.BaseDirectory;
+                var contentRoot = env.ContentRootPath;
+                _filePath = File.Exists(Path.Combine(baseDir, "data.json"))
+                    ? Path.Combine(baseDir, "data.json")
+                    : Path.Combine(contentRoot, "data.json");
+            }
 
             if (!File.Exists(_filePath))
-                throw new FileNotFoundException($"data.json not found. Searched: {baseDir} and {contentRoot}");
+                throw new FileNotFoundException($"data.json not found. Searched path: {_filePath}");
 
             var json = File.ReadAllText(_filePath);
             var root = JsonSerializer.Deserialize<JsonDataRoot>(json, JsonOptions)

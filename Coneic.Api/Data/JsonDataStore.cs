@@ -19,11 +19,32 @@ namespace Coneic.Api.Data
         private int _nextBatchId;
         private readonly object _lock = new();
 
+        /// <summary>
+        /// Allows reading JSON numbers like 33.0 as int32.
+        /// PowerShell's ConvertTo-Json serializes integers as doubles (e.g. 5.0),
+        /// so this converter makes the store resilient to that quirk.
+        /// </summary>
+        private sealed class FlexibleInt32Converter : System.Text.Json.Serialization.JsonConverter<int>
+        {
+            public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.Number)
+                {
+                    if (reader.TryGetInt32(out var i)) return i;
+                    if (reader.TryGetDouble(out var d)) return (int)d;
+                }
+                throw new JsonException($"Cannot read value as Int32 (token: {reader.TokenType})");
+            }
+            public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options)
+                => writer.WriteNumberValue(value);
+        }
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true,
             WriteIndented = true,
+            Converters = { new FlexibleInt32Converter() },
         };
 
         public JsonDataStore(IWebHostEnvironment env)

@@ -13,14 +13,18 @@ namespace Coneic.Api.Controllers
         private readonly JsonDataStore _store;
         private readonly IWebHostEnvironment _env;
         private readonly IEmailService _email;
+        private readonly IBlobStorageService _blob;
 
         private const string LoginUrl = "https://coneic2026.com.ar/login";
 
-        public RegistrationsController(JsonDataStore store, IWebHostEnvironment env, IEmailService email)
+        public RegistrationsController(
+            JsonDataStore store, IWebHostEnvironment env,
+            IEmailService email, IBlobStorageService blob)
         {
             _store = store;
-            _env = env;
+            _env   = env;
             _email = email;
+            _blob  = blob;
         }
 
         // ── Create ──────────────────────────────────────────────────────────────
@@ -162,11 +166,26 @@ namespace Coneic.Api.Controllers
             return Ok(_store.GetRegistrationById(id));
         }
 
-        // ── File upload (comprobante grupal adjunto) ────────────────────────────
+        // ── File upload → Azure Blob Storage ───────────────────────────────────
+        //
+        // Parámetros query opcionales:
+        //   type        = "certificate" | "comprobante"  (default: comprobante)
+        //   dni         = DNI del alumno       (requerido si type=certificate)
+        //   apellido    = Apellido del alumno  (requerido si type=certificate)
+        //   nombre      = Nombre del alumno    (requerido si type=certificate)
+        //   faculty     = Facultad del alumno  (requerido si type=certificate)
+        //   delegateEmail = Email del delegado (requerido si type=comprobante)
 
         [HttpPost("upload")]
         [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
-        public async Task<IActionResult> UploadFile(IFormFile file)
+        public async Task<IActionResult> UploadFile(
+            IFormFile file,
+            [FromQuery] string? type = null,
+            [FromQuery] string? dni = null,
+            [FromQuery] string? apellido = null,
+            [FromQuery] string? nombre = null,
+            [FromQuery] string? faculty = null,
+            [FromQuery] string? delegateEmail = null)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "No se recibió ningún archivo." });
@@ -175,20 +194,32 @@ namespace Coneic.Api.Controllers
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 return BadRequest(new { message = "Solo se permiten imágenes (JPG, PNG) y PDFs." });
 
-            var uploadsDir = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "uploads");
-            Directory.CreateDirectory(uploadsDir);
-
             var ext = Path.GetExtension(file.FileName).ToLower();
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadsDir, fileName);
+            using var stream = file.OpenReadStream();
 
-            using (var stream = System.IO.File.Create(filePath))
+            string url;
+
+            if (type == "certificate" &&
+                !string.IsNullOrWhiteSpace(dni) &&
+                !string.IsNullOrWhiteSpace(apellido) &&
+                !string.IsNullOrWhiteSpace(nombre) &&
+                !string.IsNullOrWhiteSpace(faculty))
             {
-                await file.CopyToAsync(stream);
+                // Certificado de alumno → container "certificados" con nombre descriptivo
+                url = await _blob.UploadCertificateAsync(
+                    stream, file.ContentType, ext, dni, apellido, nombre, faculty);
             }
-
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var url = $"{baseUrl}/uploads/{fileName}";
+            else if (!string.IsNullOrWhiteSpace(delegateEmail))
+            {
+                // Comprobante de pago → container "comprobantes" por delegado
+                url = await _blob.UploadComprobanteAsync(
+                    stream, file.ContentType, ext, delegateEmail);
+            }
+            else
+            {
+                // Upload genérico (compatibilidad hacia atrás)
+                url = await _blob.UploadGenericAsync(stream, file.ContentType, ext);
+            }
 
             return Ok(new { url });
         }

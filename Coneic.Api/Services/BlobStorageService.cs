@@ -1,0 +1,84 @@
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using System.Text.RegularExpressions;
+
+namespace Coneic.Api.Services;
+
+public class BlobStorageService : IBlobStorageService
+{
+    private readonly BlobServiceClient _client;
+    private readonly ILogger<BlobStorageService> _logger;
+
+    private const string ContainerCertificados = "certificados";
+    private const string ContainerComprobantes = "comprobantes";
+
+    public BlobStorageService(IConfiguration config, ILogger<BlobStorageService> logger)
+    {
+        var connectionString = config["AZURE_STORAGE_CONNECTION_STRING"]
+            ?? throw new InvalidOperationException("AZURE_STORAGE_CONNECTION_STRING no está configurado.");
+        _client = new BlobServiceClient(connectionString);
+        _logger = logger;
+    }
+
+    public async Task<string> UploadCertificateAsync(
+        Stream fileStream, string contentType, string extension,
+        string dni, string apellido, string nombre, string faculty)
+    {
+        // ej: certificados/utn-frba/2026-06/12345678-garcia-juan.pdf
+        var month     = DateTime.Now.ToString("yyyy-MM");
+        var facultySlug = Slugify(faculty);
+        var fileName  = $"{Slugify(dni)}-{Slugify(apellido)}-{Slugify(nombre)}{extension}";
+        var blobName  = $"{facultySlug}/{month}/{fileName}";
+
+        return await UploadAsync(ContainerCertificados, blobName, fileStream, contentType);
+    }
+
+    public async Task<string> UploadComprobanteAsync(
+        Stream fileStream, string contentType, string extension, string delegateEmail)
+    {
+        // ej: comprobantes/delegacion-utn-frba/2026-06/abc12345.jpg
+        var month        = DateTime.Now.ToString("yyyy-MM");
+        var delegateSlug = Slugify(delegateEmail.Split('@')[0]);
+        var blobName     = $"{delegateSlug}/{month}/{Guid.NewGuid():N}{extension}";
+
+        return await UploadAsync(ContainerComprobantes, blobName, fileStream, contentType);
+    }
+
+    public async Task<string> UploadGenericAsync(Stream fileStream, string contentType, string extension)
+    {
+        var blobName = $"misc/{DateTime.Now:yyyy-MM}/{Guid.NewGuid():N}{extension}";
+        return await UploadAsync(ContainerComprobantes, blobName, fileStream, contentType);
+    }
+
+    // ── Interno ───────────────────────────────────────────────────────────────
+
+    private async Task<string> UploadAsync(
+        string container, string blobName, Stream fileStream, string contentType)
+    {
+        var containerClient = _client.GetBlobContainerClient(container);
+        var blobClient      = containerClient.GetBlobClient(blobName);
+
+        var headers = new BlobHttpHeaders { ContentType = contentType };
+        await blobClient.UploadAsync(fileStream, new BlobUploadOptions { HttpHeaders = headers });
+
+        _logger.LogInformation("Blob subido: {Container}/{BlobName}", container, blobName);
+        return blobClient.Uri.ToString();
+    }
+
+    /// <summary>Convierte texto a slug ASCII para nombres de archivo seguros.</summary>
+    private static string Slugify(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return "unknown";
+
+        var normalized = input.Normalize(System.Text.NormalizationForm.FormD);
+        var ascii = new System.Text.StringBuilder();
+        foreach (var c in normalized)
+        {
+            var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (cat != System.Globalization.UnicodeCategory.NonSpacingMark)
+                ascii.Append(c);
+        }
+
+        return Regex.Replace(ascii.ToString().ToLower(), @"[^a-z0-9]+", "-").Trim('-');
+    }
+}

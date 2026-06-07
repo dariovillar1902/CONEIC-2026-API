@@ -17,6 +17,9 @@ builder.Services.AddApplicationInsightsTelemetry();
 // JSON data store for Users and Registrations (replaces SQLite for these entities)
 builder.Services.AddSingleton<JsonDataStore>();
 
+// Azure Blob Storage — para certificados de alumnos y comprobantes de pago
+builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();
+
 // Email service: ACS en producción, NullEmailService en desarrollo local
 var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
 if (!string.IsNullOrWhiteSpace(acsConnectionString))

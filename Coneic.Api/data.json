@@ -64,6 +64,401 @@
         "UTN - Facultad Regional General Pacheco"
       ],
       "mustChangePassword": false
+    },
+    {
+      "id": 6.0,
+      "email": "delegacion.utn-rosario@coneic2026.com.ar",
+      "password": "JGqCqc7@ZaMv",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Rosario",
+      "filial": "Centro",
+      "managedFaculties": [
+        "UTN - Facultad Regional Rosario",
+        "UTN - Facultad Regional Santa Fe"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 7.0,
+      "email": "delegacion.utn-venado@coneic2026.com.ar",
+      "password": "6iGU4!CE#pnT",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Venado Tuerto",
+      "filial": "Centro",
+      "managedFaculties": [
+        "UTN - Facultad Regional Venado Tuerto"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 8.0,
+      "email": "delegacion.utn-rafaela@coneic2026.com.ar",
+      "password": "PKaj8VVKACsw",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Rafaela",
+      "filial": "Centro",
+      "managedFaculties": [
+        "UTN - Facultad Regional Rafaela"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 9.0,
+      "email": "delegacion.un-rosario@coneic2026.com.ar",
+      "password": "5si37tp@Gw!t",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Rosario",
+      "filial": "Centro",
+      "managedFaculties": [
+        "Universidad Nacional de Rosario"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 10.0,
+      "email": "delegacion.utn-parana@coneic2026.com.ar",
+      "password": "Phw7ntNgpe68",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Paraná",
+      "filial": "Centro",
+      "managedFaculties": [
+        "UTN - Facultad Regional Paraná"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 11.0,
+      "email": "delegacion.utn-frba@coneic2026.com.ar",
+      "password": "ykC688eDZX3@",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Buenos Aires",
+      "filial": "Este",
+      "managedFaculties": [
+        "UTN - Facultad Regional Buenos Aires",
+        "UTN - Facultad Regional Avellaneda",
+        "Universidad de Buenos Aires",
+        "Universidad de Belgrano",
+        "Universidad de la Defensa Nacional",
+        "UTN - Facultad Regional Concepción del Uruguay",
+        "UTN - Facultad Regional Concordia",
+        "UTN - Facultad Regional La Plata",
+        "Universidad Nacional de Morón"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 12.0,
+      "email": "delegacion.utn-gral-pacheco@coneic2026.com.ar",
+      "password": "rRzm27iDDpUN",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional General Pacheco",
+      "filial": "Este",
+      "managedFaculties": [
+        "UTN - Facultad Regional General Pacheco"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 13.0,
+      "email": "delegacion.unlp@coneic2026.com.ar",
+      "password": "YtVHG77NHbwc",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de La Plata",
+      "filial": "Este",
+      "managedFaculties": [
+        "Universidad Nacional de La Plata"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 14.0,
+      "email": "delegacion.unlam@coneic2026.com.ar",
+      "password": "2KfyUm!pbGsL",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de la Matanza",
+      "filial": "Este",
+      "managedFaculties": [
+        "Universidad Nacional de la Matanza"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 15.0,
+      "email": "delegacion.uca@coneic2026.com.ar",
+      "password": "SsyUHxsE@84c",
+      "role": "delegate",
+      "delegationName": "Universidad Católica Argentina",
+      "filial": "Este",
+      "managedFaculties": [
+        "Universidad Católica Argentina"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 16.0,
+      "email": "delegacion.unne@coneic2026.com.ar",
+      "password": "AXtDekcMKLGr",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional del Nordeste",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional del Nordeste"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 17.0,
+      "email": "delegacion.unt@coneic2026.com.ar",
+      "password": "bRYAMXS@ihLg",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Tucumán",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional de Tucumán"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 18.0,
+      "email": "delegacion.utn-tucuman@coneic2026.com.ar",
+      "password": "XhTL#vZQnb@R",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Tucumán",
+      "filial": "Norte",
+      "managedFaculties": [
+        "UTN - Facultad Regional Tucumán"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 19.0,
+      "email": "delegacion.unse@coneic2026.com.ar",
+      "password": "wkgw5rNq2#!Z",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Santiago del Estero",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional de Santiago del Estero"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 20.0,
+      "email": "delegacion.unam@coneic2026.com.ar",
+      "password": "fU2s8WuS26Ea",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Misiones",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional de Misiones"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 21.0,
+      "email": "delegacion.unsa@coneic2026.com.ar",
+      "password": "wCREPgD2pmTU",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Salta",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional de Salta"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 22.0,
+      "email": "delegacion.unf@coneic2026.com.ar",
+      "password": "6@K!9tXTDDQ6",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Formosa",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Nacional de Formosa"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 23.0,
+      "email": "delegacion.ucasal@coneic2026.com.ar",
+      "password": "EjBa9UW7G7t4",
+      "role": "delegate",
+      "delegationName": "Universidad Católica de Salta",
+      "filial": "Norte",
+      "managedFaculties": [
+        "Universidad Católica de Salta"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 24.0,
+      "email": "delegacion.utn-cordoba@coneic2026.com.ar",
+      "password": "wKNgETN8wpmn",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Córdoba",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "UTN - Facultad Regional Córdoba",
+        "Universidad Católica de Córdoba",
+        "UTN - Facultad Regional Mendoza"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 25.0,
+      "email": "delegacion.unc@coneic2026.com.ar",
+      "password": "qWSSKbtdqcdA",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Córdoba",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "Universidad Nacional de Córdoba"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 26.0,
+      "email": "delegacion.unsj@coneic2026.com.ar",
+      "password": "45#6A3sSqdNZ",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de San Juan",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "Universidad Nacional de San Juan"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 27.0,
+      "email": "delegacion.unlar@coneic2026.com.ar",
+      "password": "ScEgVvdUSLsq",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de La Rioja",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "Universidad Nacional de La Rioja"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 28.0,
+      "email": "delegacion.utn-la-rioja@coneic2026.com.ar",
+      "password": "2u6#PUcfjKjw",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional La Rioja",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "UTN - Facultad Regional La Rioja"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 29.0,
+      "email": "delegacion.uncuyo@coneic2026.com.ar",
+      "password": "eDZcFde!7ddM",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional de Cuyo",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "Universidad Nacional de Cuyo"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 30.0,
+      "email": "delegacion.utn-san-rafael@coneic2026.com.ar",
+      "password": "ZfaYX3ShPQvs",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional San Rafael",
+      "filial": "Oeste",
+      "managedFaculties": [
+        "UTN - Facultad Regional San Rafael"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 31.0,
+      "email": "delegacion.unpsjb-comodoro@coneic2026.com.ar",
+      "password": "HfgssmAUbpdz",
+      "role": "delegate",
+      "delegationName": "UNPSJB - Sede Comodoro Rivadavia",
+      "filial": "Sur",
+      "managedFaculties": [
+        "Universidad Nacional de la Patagonia San Juan Bosco - Sede Comodoro Rivadavia"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 32.0,
+      "email": "delegacion.unpsjb-trelew@coneic2026.com.ar",
+      "password": "AF4qq#r27xbJ",
+      "role": "delegate",
+      "delegationName": "UNPSJB - Sede Trelew",
+      "filial": "Sur",
+      "managedFaculties": [
+        "Universidad Nacional de la Patagonia San Juan Bosco - Sede Trelew"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 33.0,
+      "email": "delegacion.uncomahue@coneic2026.com.ar",
+      "password": "M9W2QgsN3JvR",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional del Comahue",
+      "filial": "Sur",
+      "managedFaculties": [
+        "Universidad Nacional del Comahue"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 34.0,
+      "email": "delegacion.unicen@coneic2026.com.ar",
+      "password": "x6QyJx@4uGXq",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional del Centro - Olavarría",
+      "filial": "Sur",
+      "managedFaculties": [
+        "Universidad Nacional del Centro de la Provincia de Buenos Aires - Sede Olavarría"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 35.0,
+      "email": "delegacion.uns@coneic2026.com.ar",
+      "password": "#YiVrnnwMq#T",
+      "role": "delegate",
+      "delegationName": "Universidad Nacional del Sur",
+      "filial": "Sur",
+      "managedFaculties": [
+        "Universidad Nacional del Sur"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 36.0,
+      "email": "delegacion.utn-bahia-blanca@coneic2026.com.ar",
+      "password": "fPfRbeHK3bry",
+      "role": "delegate",
+      "delegationName": "UTN - Facultad Regional Bahía Blanca",
+      "filial": "Sur",
+      "managedFaculties": [
+        "UTN - Facultad Regional Bahía Blanca"
+      ],
+      "mustChangePassword": true
+    },
+    {
+      "id": 37.0,
+      "email": "internacional@coneic2026.com.ar",
+      "password": "TJ#X2bu9qX!N",
+      "role": "delegate",
+      "delegationName": "Internacional",
+      "filial": "Internacional",
+      "managedFaculties": [
+        "Internacional"
+      ],
+      "mustChangePassword": true
     }
   ],
   "registrations": [

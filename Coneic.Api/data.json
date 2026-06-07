@@ -459,6 +459,86 @@
         "Internacional"
       ],
       "mustChangePassword": true
+    },
+    {
+      "id": 38,
+      "email": "directorio@coneic2026.com.ar",
+      "password": "azNyS$3hi2kM",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 39,
+      "email": "tesoreria@coneic2026.com.ar",
+      "password": "Zitd9S@AbqdG",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 40,
+      "email": "academica@coneic2026.com.ar",
+      "password": "sHPZ3J37WKgA",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 41,
+      "email": "gestion@coneic2026.com.ar",
+      "password": "N66FnpvjpqrD",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 42,
+      "email": "prensa@coneic2026.com.ar",
+      "password": "esXC8enYYM3C",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 43,
+      "email": "auspicios@coneic2026.com.ar",
+      "password": "w7f6$RjEkfSG",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 44,
+      "email": "web@coneic2026.com.ar",
+      "password": "3SqumCqcppJd",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
+    },
+    {
+      "id": 45,
+      "email": "logistica@coneic2026.com.ar",
+      "password": "@tP6uKwdrpPs",
+      "role": "admin",
+      "delegationName": null,
+      "filial": null,
+      "managedFaculties": [],
+      "mustChangePassword": true
     }
   ],
   "registrations": [

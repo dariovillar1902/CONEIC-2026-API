@@ -9,6 +9,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Azure Application Insights — telemetría del backend
+// Rastrea requests, dependencias, excepciones y tiempos de respuesta.
+// Requiere la variable de entorno APPLICATIONINSIGHTS_CONNECTION_STRING.
+builder.Services.AddApplicationInsightsTelemetry();
+
 // JSON data store for Users and Registrations (replaces SQLite for these entities)
 builder.Services.AddSingleton<JsonDataStore>();
 

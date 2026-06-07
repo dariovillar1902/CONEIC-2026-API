@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Coneic.Api.Data;
+using Coneic.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,13 @@ builder.Services.AddSwaggerGen();
 
 // JSON data store for Users and Registrations (replaces SQLite for these entities)
 builder.Services.AddSingleton<JsonDataStore>();
+
+// Email service: ACS en producción, NullEmailService en desarrollo local
+var acsConnectionString = builder.Configuration["ACS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(acsConnectionString))
+    builder.Services.AddSingleton<IEmailService, AcsEmailService>();
+else
+    builder.Services.AddSingleton<IEmailService, NullEmailService>();
 
 // EF Core + SQLite kept for Activities and Speakers (schedule data)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

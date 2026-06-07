@@ -76,6 +76,11 @@ namespace Coneic.Api.Data
 
         // ── Users ──────────────────────────────────────────────────────────────
 
+        public List<User> GetAllUsers()
+        {
+            lock (_lock) { return _users.ToList(); }
+        }
+
         public User? FindUser(string email, string password)
             => _users.FirstOrDefault(u =>
                 string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)

@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using Coneic.Api.Data;
 using Coneic.Api.Models;
+using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Coneic.Api.Controllers
@@ -11,21 +12,42 @@ namespace Coneic.Api.Controllers
     {
         private readonly JsonDataStore _store;
         private readonly IWebHostEnvironment _env;
+        private readonly IEmailService _email;
 
-        public RegistrationsController(JsonDataStore store, IWebHostEnvironment env)
+        private const string LoginUrl = "https://coneic2026.com.ar/login";
+
+        public RegistrationsController(JsonDataStore store, IWebHostEnvironment env, IEmailService email)
         {
             _store = store;
             _env = env;
+            _email = email;
         }
 
         // ── Create ──────────────────────────────────────────────────────────────
 
         [HttpPost]
-        public IActionResult Create([FromBody] Registration registration)
+        public async Task<IActionResult> Create([FromBody] Registration registration)
         {
             var created = _store.AddRegistration(registration);
             if (created == null)
                 return Conflict(new { message = "Ya existe una inscripción con ese email." });
+
+            // Buscar el delegado de la facultad para incluirlo en el email
+            var delegateUser = _store.GetAllUsers()
+                .FirstOrDefault(u => u.Role == "delegate" &&
+                                     (u.ManagedFaculties.Contains(created.Faculty ?? "") ||
+                                      u.DelegationName == created.Faculty));
+            var delegateName = delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad";
+            var filialName   = created.Faculty ?? "";
+
+            await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
+                ToEmail:      created.Email,
+                ToName:       $"{created.Name} {created.Lastname}",
+                Faculty:      created.Faculty ?? "",
+                DelegateName: delegateName,
+                FilialName:   filialName,
+                WebUrl:       "https://coneic2026.com.ar"
+            ));
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { registration = created });
         }
@@ -72,7 +94,7 @@ namespace Coneic.Api.Controllers
         // ── Update ──────────────────────────────────────────────────────────────
 
         [HttpPut("{id}/status")]
-        public IActionResult UpdateStatus(int id, [FromBody] string status)
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
             if (!_store.UpdateStatus(id, status)) return NotFound();
             var reg = _store.GetRegistrationById(id);
@@ -81,6 +103,15 @@ namespace Coneic.Api.Controllers
             {
                 var generatedPassword = GeneratePassword();
                 _store.CreateUserFromRegistration(reg.Email, generatedPassword);
+
+                // Email de inscripción confirmada con contraseña temporal
+                await _email.SendRegistrationConfirmedAsync(
+                    toEmail:       reg.Email,
+                    toName:        $"{reg.Name} {reg.Lastname}",
+                    paymentDetail: reg.PaymentCondition ?? "Pago completo",
+                    tempPassword:  generatedPassword,
+                    loginUrl:      LoginUrl);
+
                 return Ok(new { registration = reg, generatedPassword });
             }
 
@@ -88,10 +119,25 @@ namespace Coneic.Api.Controllers
         }
 
         [HttpPatch("{id}/payment")]
-        public IActionResult UpdatePayment(int id, [FromBody] UpdatePaymentDto dto)
+        public async Task<IActionResult> UpdatePayment(int id, [FromBody] UpdatePaymentDto dto)
         {
+            // Capturar estado anterior para saber si cambió a habilitado
+            var before = _store.GetRegistrationById(id);
+            var wasEnabled = before?.IsEnabled ?? false;
+
             if (!_store.UpdatePayment(id, dto.IsEnabled, dto.PaymentCondition)) return NotFound();
-            return Ok(_store.GetRegistrationById(id));
+
+            var reg = _store.GetRegistrationById(id);
+
+            // Enviar email solo cuando se habilita por primera vez
+            if (dto.IsEnabled && !wasEnabled && reg != null)
+            {
+                await _email.SendRegistrationValidatedAsync(
+                    toEmail: reg.Email,
+                    toName:  $"{reg.Name} {reg.Lastname}");
+            }
+
+            return Ok(reg);
         }
 
         [HttpPatch("{id}/amounts")]

@@ -12,9 +12,7 @@ public class AcsEmailService : IEmailService
     private readonly EmailClient _client;
     private readonly ILogger<AcsEmailService> _logger;
 
-    // Dirección de envío: dominio gestionado por Azure (cambiarlo a noreply@coneic2026.com.ar
-    // cuando el dominio personalizado esté verificado en ACS).
-    private const string SenderAddress = "DoNotReply@31503a7d-e3bd-42fc-becb-9719bc0e7bb7.azurecomm.net";
+    private const string SenderAddress = "noreply@mail.coneic2026.com.ar";
     private const string SenderName    = "CONEIC 2026";
     private const string LoginUrl      = "https://coneic2026.com.ar/login";
 

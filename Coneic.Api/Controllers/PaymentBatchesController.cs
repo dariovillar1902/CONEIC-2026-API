@@ -1,5 +1,6 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
+using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Coneic.Api.Controllers
@@ -9,10 +10,12 @@ namespace Coneic.Api.Controllers
     public class PaymentBatchesController : ControllerBase
     {
         private readonly JsonDataStore _store;
+        private readonly IEmailService _email;
 
-        public PaymentBatchesController(JsonDataStore store)
+        public PaymentBatchesController(JsonDataStore store, IEmailService email)
         {
             _store = store;
+            _email = email;
         }
 
         /// <summary>Get all batches for the logged-in delegate (by email query param).</summary>
@@ -39,12 +42,32 @@ namespace Coneic.Api.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] PaymentBatch batch)
+        public async Task<IActionResult> Create([FromBody] PaymentBatch batch)
         {
             if (string.IsNullOrWhiteSpace(batch.DelegateEmail))
                 return BadRequest(new { message = "DelegateEmail es requerido." });
 
             var created = _store.AddPaymentBatch(batch);
+
+            // Enviar email "Primera cuota recibida" a cada alumno con PaymentType "Pagó 1° Cuota"
+            var firstCuotaAssignments = created.Assignments
+                .Where(a => a.PaymentType == "Pagó 1° Cuota")
+                .ToList();
+
+            if (firstCuotaAssignments.Count > 0)
+            {
+                foreach (var assignment in firstCuotaAssignments)
+                {
+                    var reg = _store.GetRegistrationById(assignment.RegistrationId);
+                    if (reg == null) continue;
+
+                    await _email.SendFirstPaymentReceivedAsync(
+                        toEmail: reg.Email,
+                        toName:  $"{reg.Name} {reg.Lastname}",
+                        dueDate: "a confirmar con tu delegado/a");
+                }
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 

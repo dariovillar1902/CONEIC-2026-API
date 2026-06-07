@@ -35,6 +35,7 @@ namespace Coneic.Api.Controllers
 
         // POST: api/photos
         [HttpPost]
+        [Consumes("multipart/form-data")]
         public async Task<ActionResult<Photo>> UploadPhoto([FromForm] IFormFile file, [FromForm] string description, [FromForm] string uploadedBy)
         {
             if (file == null || file.Length == 0)

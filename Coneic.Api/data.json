@@ -66,7 +66,7 @@
       "mustChangePassword": false
     },
     {
-      "id": 6.0,
+      "id": 6,
       "email": "delegacion.utn-rosario@coneic2026.com.ar",
       "password": "JGqCqc7@ZaMv",
       "role": "delegate",
@@ -79,7 +79,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 7.0,
+      "id": 7,
       "email": "delegacion.utn-venado@coneic2026.com.ar",
       "password": "6iGU4!CE#pnT",
       "role": "delegate",
@@ -91,7 +91,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 8.0,
+      "id": 8,
       "email": "delegacion.utn-rafaela@coneic2026.com.ar",
       "password": "PKaj8VVKACsw",
       "role": "delegate",
@@ -103,7 +103,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 9.0,
+      "id": 9,
       "email": "delegacion.un-rosario@coneic2026.com.ar",
       "password": "5si37tp@Gw!t",
       "role": "delegate",
@@ -115,7 +115,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 10.0,
+      "id": 10,
       "email": "delegacion.utn-parana@coneic2026.com.ar",
       "password": "Phw7ntNgpe68",
       "role": "delegate",
@@ -127,7 +127,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 11.0,
+      "id": 11,
       "email": "delegacion.utn-frba@coneic2026.com.ar",
       "password": "ykC688eDZX3@",
       "role": "delegate",
@@ -147,7 +147,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 12.0,
+      "id": 12,
       "email": "delegacion.utn-gral-pacheco@coneic2026.com.ar",
       "password": "rRzm27iDDpUN",
       "role": "delegate",
@@ -159,7 +159,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 13.0,
+      "id": 13,
       "email": "delegacion.unlp@coneic2026.com.ar",
       "password": "YtVHG77NHbwc",
       "role": "delegate",
@@ -171,7 +171,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 14.0,
+      "id": 14,
       "email": "delegacion.unlam@coneic2026.com.ar",
       "password": "2KfyUm!pbGsL",
       "role": "delegate",
@@ -183,7 +183,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 15.0,
+      "id": 15,
       "email": "delegacion.uca@coneic2026.com.ar",
       "password": "SsyUHxsE@84c",
       "role": "delegate",
@@ -195,7 +195,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 16.0,
+      "id": 16,
       "email": "delegacion.unne@coneic2026.com.ar",
       "password": "AXtDekcMKLGr",
       "role": "delegate",
@@ -207,7 +207,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 17.0,
+      "id": 17,
       "email": "delegacion.unt@coneic2026.com.ar",
       "password": "bRYAMXS@ihLg",
       "role": "delegate",
@@ -219,7 +219,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 18.0,
+      "id": 18,
       "email": "delegacion.utn-tucuman@coneic2026.com.ar",
       "password": "XhTL#vZQnb@R",
       "role": "delegate",
@@ -231,7 +231,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 19.0,
+      "id": 19,
       "email": "delegacion.unse@coneic2026.com.ar",
       "password": "wkgw5rNq2#!Z",
       "role": "delegate",
@@ -243,7 +243,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 20.0,
+      "id": 20,
       "email": "delegacion.unam@coneic2026.com.ar",
       "password": "fU2s8WuS26Ea",
       "role": "delegate",
@@ -255,7 +255,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 21.0,
+      "id": 21,
       "email": "delegacion.unsa@coneic2026.com.ar",
       "password": "wCREPgD2pmTU",
       "role": "delegate",
@@ -267,7 +267,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 22.0,
+      "id": 22,
       "email": "delegacion.unf@coneic2026.com.ar",
       "password": "6@K!9tXTDDQ6",
       "role": "delegate",
@@ -279,7 +279,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 23.0,
+      "id": 23,
       "email": "delegacion.ucasal@coneic2026.com.ar",
       "password": "EjBa9UW7G7t4",
       "role": "delegate",
@@ -291,7 +291,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 24.0,
+      "id": 24,
       "email": "delegacion.utn-cordoba@coneic2026.com.ar",
       "password": "wKNgETN8wpmn",
       "role": "delegate",
@@ -305,7 +305,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 25.0,
+      "id": 25,
       "email": "delegacion.unc@coneic2026.com.ar",
       "password": "qWSSKbtdqcdA",
       "role": "delegate",
@@ -317,7 +317,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 26.0,
+      "id": 26,
       "email": "delegacion.unsj@coneic2026.com.ar",
       "password": "45#6A3sSqdNZ",
       "role": "delegate",
@@ -329,7 +329,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 27.0,
+      "id": 27,
       "email": "delegacion.unlar@coneic2026.com.ar",
       "password": "ScEgVvdUSLsq",
       "role": "delegate",
@@ -341,7 +341,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 28.0,
+      "id": 28,
       "email": "delegacion.utn-la-rioja@coneic2026.com.ar",
       "password": "2u6#PUcfjKjw",
       "role": "delegate",
@@ -353,7 +353,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 29.0,
+      "id": 29,
       "email": "delegacion.uncuyo@coneic2026.com.ar",
       "password": "eDZcFde!7ddM",
       "role": "delegate",
@@ -365,7 +365,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 30.0,
+      "id": 30,
       "email": "delegacion.utn-san-rafael@coneic2026.com.ar",
       "password": "ZfaYX3ShPQvs",
       "role": "delegate",
@@ -377,7 +377,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 31.0,
+      "id": 31,
       "email": "delegacion.unpsjb-comodoro@coneic2026.com.ar",
       "password": "HfgssmAUbpdz",
       "role": "delegate",
@@ -389,7 +389,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 32.0,
+      "id": 32,
       "email": "delegacion.unpsjb-trelew@coneic2026.com.ar",
       "password": "AF4qq#r27xbJ",
       "role": "delegate",
@@ -401,7 +401,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 33.0,
+      "id": 33,
       "email": "delegacion.uncomahue@coneic2026.com.ar",
       "password": "M9W2QgsN3JvR",
       "role": "delegate",
@@ -413,7 +413,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 34.0,
+      "id": 34,
       "email": "delegacion.unicen@coneic2026.com.ar",
       "password": "x6QyJx@4uGXq",
       "role": "delegate",
@@ -425,7 +425,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 35.0,
+      "id": 35,
       "email": "delegacion.uns@coneic2026.com.ar",
       "password": "#YiVrnnwMq#T",
       "role": "delegate",
@@ -437,7 +437,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 36.0,
+      "id": 36,
       "email": "delegacion.utn-bahia-blanca@coneic2026.com.ar",
       "password": "fPfRbeHK3bry",
       "role": "delegate",
@@ -449,7 +449,7 @@
       "mustChangePassword": true
     },
     {
-      "id": 37.0,
+      "id": 37,
       "email": "internacional@coneic2026.com.ar",
       "password": "TJ#X2bu9qX!N",
       "role": "delegate",

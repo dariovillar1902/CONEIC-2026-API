@@ -45,12 +45,13 @@ namespace Coneic.Api.Controllers
             var filialName   = created.Faculty ?? "";
 
             await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
-                ToEmail:      created.Email,
-                ToName:       $"{created.Name} {created.Lastname}",
-                Faculty:      created.Faculty ?? "",
-                DelegateName: delegateName,
-                FilialName:   filialName,
-                WebUrl:       "https://coneic2026.com.ar"
+                ToEmail:       created.Email,
+                ToName:        $"{created.Name} {created.Lastname}",
+                Faculty:       created.Faculty ?? "",
+                DelegateName:  delegateName,
+                DelegateEmail: delegateUser?.Email ?? "",
+                FilialName:    filialName,
+                WebUrl:        "https://coneic2026.com.ar"
             ));
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { registration = created });
@@ -136,9 +137,17 @@ namespace Coneic.Api.Controllers
             // Enviar email solo cuando se habilita por primera vez
             if (dto.IsEnabled && !wasEnabled && reg != null)
             {
+                var delegateUser = _store.GetAllUsers()
+                    .FirstOrDefault(u => u.Role == "delegate" &&
+                                         (u.ManagedFaculties.Contains(reg.Faculty ?? "") ||
+                                          u.DelegationName == reg.Faculty));
+
                 await _email.SendRegistrationValidatedAsync(
-                    toEmail: reg.Email,
-                    toName:  $"{reg.Name} {reg.Lastname}");
+                    toEmail:       reg.Email,
+                    toName:        $"{reg.Name} {reg.Lastname}",
+                    delegateName:  delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad",
+                    delegateEmail: delegateUser?.Email ?? "",
+                    filialName:    reg.Faculty ?? "");
             }
 
             return Ok(reg);

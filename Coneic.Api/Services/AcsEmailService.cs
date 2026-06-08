@@ -27,20 +27,23 @@ public class AcsEmailService : IEmailService
     public async Task SendRegistrationReceivedAsync(RegistrationEmailData data)
     {
         var (subject, html) = EmailTemplates.RegistrationReceived(
-            data.ToName, data.Faculty, data.DelegateName, data.FilialName);
+            data.ToName, data.Faculty, data.DelegateName, data.DelegateEmail, data.FilialName);
         await SendAsync(data.ToEmail, data.ToName, subject, html);
     }
 
-    public async Task SendRegistrationValidatedAsync(string toEmail, string toName)
+    public async Task SendRegistrationValidatedAsync(string toEmail, string toName,
+        string delegateName, string delegateEmail, string filialName)
     {
-        var (subject, html) = EmailTemplates.RegistrationValidated(toName);
+        var (subject, html) = EmailTemplates.RegistrationValidated(
+            toName, delegateName, delegateEmail, filialName);
         await SendAsync(toEmail, toName, subject, html);
     }
 
     public async Task SendRegistrationConfirmedAsync(
         string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl)
     {
-        var (subject, html) = EmailTemplates.RegistrationConfirmed(toName, paymentDetail, tempPassword, loginUrl);
+        var (subject, html) = EmailTemplates.RegistrationConfirmed(
+            toName, toEmail, paymentDetail, tempPassword, loginUrl);
         await SendAsync(toEmail, toName, subject, html);
     }
 

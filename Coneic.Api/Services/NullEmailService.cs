@@ -17,9 +17,12 @@ public class NullEmailService : IEmailService
         return Task.CompletedTask;
     }
 
-    public Task SendRegistrationValidatedAsync(string toEmail, string toName)
+    public Task SendRegistrationValidatedAsync(string toEmail, string toName,
+        string delegateName, string delegateEmail, string filialName)
     {
-        _logger.LogInformation("[DEV EMAIL] RegistrationValidated → {Email} ({Name})", toEmail, toName);
+        _logger.LogInformation(
+            "[DEV EMAIL] RegistrationValidated → {Email} ({Name}) | Delegado: {Delegate} | Filial: {Filial}",
+            toEmail, toName, delegateName, filialName);
         return Task.CompletedTask;
     }
 

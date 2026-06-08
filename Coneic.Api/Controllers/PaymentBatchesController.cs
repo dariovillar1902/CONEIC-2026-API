@@ -41,6 +41,14 @@ namespace Coneic.Api.Controllers
             return Ok(batch);
         }
 
+        private const string LoginUrl = "https://coneic2026.com.ar/login";
+
+        private static string GeneratePassword()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+            return new string(Enumerable.Range(0, 10).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] PaymentBatch batch)
         {
@@ -49,22 +57,37 @@ namespace Coneic.Api.Controllers
 
             var created = _store.AddPaymentBatch(batch);
 
-            // Enviar email "Primera cuota recibida" a cada alumno con PaymentType "Pagó 1° Cuota"
-            var firstCuotaAssignments = created.Assignments
-                .Where(a => a.PaymentType == "Pagó 1° Cuota")
-                .ToList();
-
-            if (firstCuotaAssignments.Count > 0)
+            // Procesar cada asignación: actualizar paymentCondition y enviar emails
+            foreach (var assignment in created.Assignments)
             {
-                foreach (var assignment in firstCuotaAssignments)
-                {
-                    var reg = _store.GetRegistrationById(assignment.RegistrationId);
-                    if (reg == null) continue;
+                var reg = _store.GetRegistrationById(assignment.RegistrationId);
+                if (reg == null) continue;
 
-                    await _email.SendFirstPaymentReceivedAsync(
-                        toEmail: reg.Email,
-                        toName:  $"{reg.Name} {reg.Lastname}",
-                        dueDate: "a confirmar con tu delegado/a");
+                // Actualizar paymentCondition en el registro (preserva isEnabled actual)
+                _store.UpdatePayment(assignment.RegistrationId, reg.IsEnabled, assignment.PaymentType);
+
+                switch (assignment.PaymentType)
+                {
+                    case "Pagó Completo":
+                    case "Pagó 2° Cuota":
+                    {
+                        // Crear usuario en portal y enviar email de confirmación
+                        var tempPassword = GeneratePassword();
+                        _store.CreateUserFromRegistration(reg.Email, tempPassword);
+                        await _email.SendRegistrationConfirmedAsync(
+                            toEmail:       reg.Email,
+                            toName:        $"{reg.Name} {reg.Lastname}",
+                            paymentDetail: assignment.PaymentType,
+                            tempPassword:  tempPassword,
+                            loginUrl:      LoginUrl);
+                        break;
+                    }
+                    case "Pagó 1° Cuota":
+                        await _email.SendFirstPaymentReceivedAsync(
+                            toEmail: reg.Email,
+                            toName:  $"{reg.Name} {reg.Lastname}",
+                            dueDate: "a confirmar con tu delegado/a");
+                        break;
                 }
             }
 

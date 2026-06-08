@@ -111,26 +111,26 @@ internal static class EmailTemplates
     public static (string Subject, string Html) RegistrationReceived(
         string toName, string faculty, string delegateName, string filialName)
     {
-        var subject = "✅ Pre-inscripción recibida — CONEIC 2026";
+        var subject = "¡Pre-Inscripción recibida! - CONEIC XVIII";
         var body = $"""
-            {H1("¡Tu pre-inscripción fue recibida!")}
-            {P($"Hola <strong>{toName}</strong>, registramos tu pre-inscripción al CONEIC 2026. A continuación están los detalles.")}
+            {H1("¡Pre-Inscripción recibida!")}
+            {P($"Hola <strong>{toName}</strong>,")}
+            {P($"Recibimos tu pre-inscripción al <strong>CONEIC XVIII</strong>. Tu solicitud fue registrada correctamente.")}
             {InfoBox($"""
                 {Field("Delegación", faculty)}
                 {Field("Delegado/a", delegateName)}
                 {Field("Filial", filialName)}
                 """)}
             {WarningBox($"""
-                <strong>⚠️ Importante — próximo paso</strong><br/>
-                Tu inscripción aún no está confirmada. El/la delegado/a de tu facultad
-                (<strong>{delegateName}</strong>) va a habilitarte una vez que abra la inscripción
-                formal para tu delegación. Vas a recibir otro email cuando eso ocurra.
+                <strong>Próximo paso:</strong><br/>
+                Tu inscripción aún no está confirmada. Una vez que el/la delegado/a (<strong>{delegateName}</strong>)
+                habilite tu inscripción, recibirás un nuevo email con las instrucciones para continuar.
+                Ante cualquier consulta, comunicáte directamente con tu delegado/a.
                 """)}
-            {P($"Ante cualquier consulta, contactá directamente a tu delegado/a.")}
             {Button(WebUrl, "Ver el sitio del CONEIC")}
             """;
 
-        return (subject, Wrap("Pre-inscripción CONEIC 2026", body));
+        return (subject, Wrap("Pre-Inscripción recibida — CONEIC XVIII", body));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -138,44 +138,57 @@ internal static class EmailTemplates
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationValidated(string toName)
     {
-        var subject = "🎉 ¡Tu inscripción al CONEIC 2026 fue habilitada!";
+        var subject = "Inscripción habilitada - CONEIC XVIII";
         var body = $"""
             {H1("¡Tu inscripción fue habilitada!")}
-            {P($"Hola <strong>{toName}</strong>, el/la delegado/a de tu facultad habilitó tu inscripción al CONEIC 2026.")}
+            {P($"Hola <strong>{toName}</strong>,")}
+            {P($"¡Buenas noticias! El/la delegado/a de tu facultad habilitó tu inscripción al <strong>CONEIC XVIII</strong>.")}
             {InfoBox("""
-                Esto significa que ya podés proceder con el pago de la inscripción según las
-                instrucciones que te comparta tu delegado/a. Una vez que el pago sea confirmado,
-                recibirás un email con tu acceso a la plataforma.
+                Ya podés proceder con el pago de la inscripción según las instrucciones que te
+                indique tu delegado/a. Comunicate con él/ella para coordinar la forma de pago
+                y conocer la fecha límite para hacerlo.
+                Una vez confirmado el pago, recibirás un email con tu acceso a la plataforma del congreso.
                 """)}
             {Button(WebUrl, "Ver el sitio del CONEIC")}
             """;
 
-        return (subject, Wrap("Inscripción habilitada — CONEIC 2026", body));
+        return (subject, Wrap("Inscripción habilitada — CONEIC XVIII", body));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 3. Inscripción confirmada (pago completo — se crea el usuario)
+    // 3. Inscripción confirmada (pago completo o 2da cuota — se crea el usuario)
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationConfirmed(
         string toName, string paymentDetail, string tempPassword, string loginUrl)
     {
-        var subject = "🎊 ¡Inscripción al CONEIC 2026 confirmada!";
+        var subject = "Inscripción confirmada - CONEIC XVIII";
+
+        // Diferenciar el mensaje según si es pago completo o 2da cuota
+        var isSecondInstallment = paymentDetail == "Pagó 2° Cuota";
+        var introText = isSecondInstallment
+            ? $"Hola <strong>{toName}</strong>, recibimos el pago de la <strong>segunda cuota</strong> de tu inscripción al <strong>CONEIC XVIII</strong>. ¡Tu inscripción quedó completamente confirmada!"
+            : $"Hola <strong>{toName}</strong>, recibimos el pago de tu inscripción al <strong>CONEIC XVIII</strong>. ¡Tu inscripción quedó confirmada!";
+
         var body = $"""
             {H1("¡Inscripción confirmada!")}
-            {P($"Hola <strong>{toName}</strong>, tu pago fue registrado y tu inscripción al CONEIC 2026 está confirmada. ¡Nos vemos en Buenos Aires!")}
+            {P(introText)}
             {InfoBox($"""
-                {Field("Condición de pago", paymentDetail)}
+                {Field("Estado de pago", paymentDetail)}
+                <br/>
+                Tu lugar en el CONEIC XVIII está reservado. ¡Nos vemos en Buenos Aires en octubre!
                 """)}
             {WarningBox($"""
-                <strong>🔐 Tus credenciales de acceso</strong><br/>
-                Contraseña temporal: <strong style="font-size:18px;letter-spacing:2px;">{tempPassword}</strong><br/>
+                <strong>🔐 Acceso al portal del congreso</strong><br/>
+                Se creó un usuario para vos con las siguientes credenciales:<br/><br/>
+                Usuario: <strong>{toName}</strong><br/>
+                Contraseña provisoria: <strong style="font-size:18px;letter-spacing:2px;">{tempPassword}</strong><br/>
                 <br/>
-                Ingresá con tu email y cambiá la contraseña en tu primer acceso.
+                Ingresá con tu email y esta contraseña. Te recomendamos cambiarla en tu primer acceso.
                 """)}
-            {Button(loginUrl, "Ingresar a la plataforma")}
+            {Button(loginUrl, "Ingresar al portal →")}
             """;
 
-        return (subject, Wrap("Inscripción confirmada — CONEIC 2026", body));
+        return (subject, Wrap("Inscripción confirmada — CONEIC XVIII", body));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -183,19 +196,22 @@ internal static class EmailTemplates
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) FirstPaymentReceived(string toName, string dueDate)
     {
-        var subject = "💰 Primera cuota recibida — CONEIC 2026";
+        var subject = "Primera cuota recibida - CONEIC XVIII";
         var body = $"""
             {H1("Primera cuota recibida")}
-            {P($"Hola <strong>{toName}</strong>, registramos el pago de tu primera cuota para el CONEIC 2026.")}
+            {P($"Hola <strong>{toName}</strong>,")}
+            {P($"Recibimos el pago de la <strong>primera cuota</strong> de tu inscripción al <strong>CONEIC XVIII</strong>.")}
             {InfoBox($"""
                 {Field("Vencimiento segunda cuota", dueDate)}
                 <br/>
-                Recordá abonar la segunda cuota antes del vencimiento para completar tu inscripción.
-                Ante cualquier consulta, contactá a tu delegado/a.
+                Recordá abonar la segunda cuota antes de la fecha de vencimiento para completar
+                y confirmar tu inscripción. <strong>Si no se recibe el pago en esa fecha, tu lugar
+                podría ser liberado.</strong><br/><br/>
+                Ante cualquier consulta, comunicáte con tu delegado/a.
                 """)}
             {Button(WebUrl, "Ver el sitio del CONEIC")}
             """;
 
-        return (subject, Wrap("Primera cuota — CONEIC 2026", body));
+        return (subject, Wrap("Primera cuota recibida — CONEIC XVIII", body));
     }
 }

@@ -53,7 +53,7 @@ internal static class EmailTemplates
                   <tr>
                     <td style="padding:24px 0;text-align:center;">
                       <p style="margin:0;color:{ColorMuted};font-size:12px;">
-                        CONEIC 2026 · San Rafael, Mendoza<br />
+                        CONEIC 2026 · Ciudad de Buenos Aires<br />
                         <a href="{WebUrl}" style="color:{ColorGold};text-decoration:none;">{WebUrl}</a>
                       </p>
                     </td>
@@ -162,7 +162,7 @@ internal static class EmailTemplates
         var subject = "🎊 ¡Inscripción al CONEIC 2026 confirmada!";
         var body = $"""
             {H1("¡Inscripción confirmada!")}
-            {P($"Hola <strong>{toName}</strong>, tu pago fue registrado y tu inscripción al CONEIC 2026 está confirmada. ¡Nos vemos en San Rafael!")}
+            {P($"Hola <strong>{toName}</strong>, tu pago fue registrado y tu inscripción al CONEIC 2026 está confirmada. ¡Nos vemos en Buenos Aires!")}
             {InfoBox($"""
                 {Field("Condición de pago", paymentDetail)}
                 """)}

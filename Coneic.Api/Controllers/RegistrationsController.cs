@@ -41,15 +41,16 @@ namespace Coneic.Api.Controllers
                 .FirstOrDefault(u => u.Role == "delegate" &&
                                      (u.ManagedFaculties.Contains(created.Faculty ?? "") ||
                                       u.DelegationName == created.Faculty));
-            var delegateName = delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad";
-            var filialName   = created.Faculty ?? "";
+            var delegateName  = delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad";
+            var delegateEmail = delegateUser?.Email ?? "";
+            var filialName    = delegateUser?.Filial ?? created.Faculty ?? "";
 
             await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
                 ToEmail:       created.Email,
                 ToName:        $"{created.Name} {created.Lastname}",
                 Faculty:       created.Faculty ?? "",
                 DelegateName:  delegateName,
-                DelegateEmail: delegateUser?.Email ?? "",
+                DelegateEmail: delegateEmail,
                 FilialName:    filialName,
                 WebUrl:        "https://coneic2026.com.ar"
             ));
@@ -147,7 +148,7 @@ namespace Coneic.Api.Controllers
                     toName:        $"{reg.Name} {reg.Lastname}",
                     delegateName:  delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad",
                     delegateEmail: delegateUser?.Email ?? "",
-                    filialName:    reg.Faculty ?? "");
+                    filialName:    delegateUser?.Filial ?? reg.Faculty ?? "");
             }
 
             return Ok(reg);

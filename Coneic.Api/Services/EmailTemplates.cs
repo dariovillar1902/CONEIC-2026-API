@@ -3,7 +3,7 @@ namespace Coneic.Api.Services;
 /// <summary>
 /// Plantillas HTML para los emails transaccionales del CONEIC 2026.
 /// Cada método devuelve (subject, htmlBody).
-/// Diseño: tarjeta blanca sobre fondo gris, header azul institucional, acentos dorados.
+/// Diseño: tarjeta blanca sobre fondo gris, header azul institucional, logo y acentos dorados.
 /// </summary>
 internal static class EmailTemplates
 {
@@ -21,6 +21,7 @@ internal static class EmailTemplates
     private const string LoginUrl     = "https://coneic2026.com.ar/login";
     private const string InstagramUrl = "https://www.instagram.com/coneicxviii";
     private const string LinkedInUrl  = "https://www.linkedin.com/company/coneic2026";
+    private const string LogoUrl      = "https://coneic2026.com.ar/assets/LOGO_H-CONEIC-COLOR-BLANCO.png";
 
     // ═══════════════════════════════════════════════════════════════════════════
     // WRAPPER HTML: estructura base de la tarjeta
@@ -47,15 +48,15 @@ internal static class EmailTemplates
 
                   <!-- HEADER -->
                   <tr>
-                    <td style="background-color:{BgHeader};padding:36px 40px;text-align:center;">
-                      <p style="margin:0 0 6px;color:{ColorGold};font-size:11px;font-weight:bold;
+                    <td style="background-color:{BgHeader};padding:32px 40px 28px;text-align:center;">
+                      <img src="{LogoUrl}" alt="CONEIC XVIII" height="56"
+                           style="height:56px;max-width:260px;object-fit:contain;
+                                  display:block;margin:0 auto 16px;" />
+                      <p style="margin:0 0 4px;color:{ColorGold};font-size:11px;font-weight:bold;
                                 letter-spacing:3px;text-transform:uppercase;">
                         Congreso Nacional de Estudiantes de Ingeniería Civil
                       </p>
-                      <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:bold;letter-spacing:4px;">
-                        CONEIC XVIII
-                      </h1>
-                      <p style="margin:10px 0 0;color:{ColorBlue};font-size:12px;letter-spacing:1px;">
+                      <p style="margin:6px 0 0;color:{ColorBlue};font-size:12px;letter-spacing:1px;">
                         Ciudad de Buenos Aires · Octubre 2026
                       </p>
                     </td>
@@ -236,18 +237,19 @@ internal static class EmailTemplates
               </p>
               <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
                 Contacto: <strong style="color:{ColorText};">{delegateName}</strong>
-                &nbsp;–&nbsp;
+              </p>
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
                 <a href="mailto:{delegateEmail}" style="color:{BgHeader};font-weight:bold;
                    text-decoration:underline;">{delegateEmail}</a>
               </p>
             """)}
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
               Mientras tanto, podés seguir las novedades del congreso a través de nuestras
-              <a href="{InstagramUrl}" style="color:{BgHeader};font-weight:bold;">redes sociales</a>
+              redes sociales
               (<a href="{InstagramUrl}" style="color:{BgHeader};">Instagram</a>
               &nbsp;/&nbsp;
               <a href="{LinkedInUrl}" style="color:{BgHeader};">LinkedIn</a>)
-              y <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">canales oficiales</a>.
+              y <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web oficial</a>.
             </p>
             <p style="margin:0;font-size:15px;line-height:1.75;color:{BgHeader};font-weight:bold;">
               ¡Estamos muy felices de que formes parte de esta edición!
@@ -264,7 +266,7 @@ internal static class EmailTemplates
         string toName, string delegateName, string delegateEmail, string filialName)
     {
         var subject = "Inscripción habilitada – CONEIC XVIII";
-        var banner = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Inscripción habilitada");
+        var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Inscripción habilitada");
 
         var body = $"""
             <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
@@ -288,9 +290,10 @@ internal static class EmailTemplates
               <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
                 Filial: <strong style="color:{ColorText};">{filialName}</strong>
               </p>
-              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
+              <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
                 Contacto: <strong style="color:{ColorText};">{delegateName}</strong>
-                &nbsp;–&nbsp;
+              </p>
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
                 <a href="mailto:{delegateEmail}" style="color:{BgHeader};font-weight:bold;
                    text-decoration:underline;">{delegateEmail}</a>
               </p>
@@ -316,12 +319,10 @@ internal static class EmailTemplates
         string toName, string toEmail, string paymentDetail, string tempPassword, string loginUrl)
     {
         var subject = "Inscripción confirmada – CONEIC XVIII";
-        var banner = StatusBanner("#E8F4EC", "#1a6b35", "🎉 &nbsp;Inscripción confirmada");
+        var banner  = StatusBanner("#E8F4EC", "#1a6b35", "🎉 &nbsp;Inscripción confirmada");
 
         var isSecondInstallment = paymentDetail == "Pagó 2° Cuota";
-        var paymentDesc = isSecondInstallment
-            ? "la segunda cuota"
-            : "el pago completo";
+        var paymentDesc = isSecondInstallment ? "la segunda cuota" : "el pago completo";
 
         var body = $"""
             <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
@@ -358,7 +359,7 @@ internal static class EmailTemplates
     public static (string Subject, string Html) FirstPaymentReceived(string toName, string dueDate)
     {
         var subject = "Primera cuota recibida – CONEIC XVIII";
-        var banner = StatusBanner("#FDF6E3", "#8a6500", "💳 &nbsp;Primera cuota recibida");
+        var banner  = StatusBanner("#FDF6E3", "#8a6500", "💳 &nbsp;Primera cuota recibida");
 
         var body = $"""
             <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
@@ -394,8 +395,8 @@ internal static class EmailTemplates
               Ante cualquier duda, podés comunicarte con tu delegado/a.
             </p>
             <p style="margin:0;font-size:15px;line-height:1.75;color:{ColorText};">
-              Te invitamos a seguir todas las novedades, anuncios e información importante a través
-              de nuestra <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web</a>
+              Te invitamos a seguir todas las novedades a través de nuestra
+              <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web</a>
               y redes sociales oficiales.
             </p>
             """;

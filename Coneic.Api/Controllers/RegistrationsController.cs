@@ -36,23 +36,13 @@ namespace Coneic.Api.Controllers
             if (created == null)
                 return Conflict(new { message = "Ya existe una inscripción con ese email." });
 
-            // Buscar el delegado de la facultad para incluirlo en el email
-            var delegateUser = _store.GetAllUsers()
-                .FirstOrDefault(u => u.Role == "delegate" &&
-                                     (u.ManagedFaculties.Contains(created.Faculty ?? "") ||
-                                      u.DelegationName == created.Faculty));
-            var delegateName  = delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad";
-            var delegateEmail = delegateUser?.Email ?? "";
-            var filialName    = delegateUser?.Filial ?? created.Faculty ?? "";
+            var delegation = DelegateDirectory.Lookup(created.Faculty);
 
             await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
-                ToEmail:       created.Email,
-                ToName:        $"{created.Name} {created.Lastname}",
-                Faculty:       created.Faculty ?? "",
-                DelegateName:  delegateName,
-                DelegateEmail: delegateEmail,
-                FilialName:    filialName,
-                WebUrl:        "https://coneic2026.com.ar"
+                ToEmail:    created.Email,
+                ToName:     $"{created.Name} {created.Lastname}",
+                Faculty:    created.Faculty ?? "",
+                Delegation: delegation
             ));
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, new { registration = created });
@@ -138,17 +128,12 @@ namespace Coneic.Api.Controllers
             // Enviar email solo cuando se habilita por primera vez
             if (dto.IsEnabled && !wasEnabled && reg != null)
             {
-                var delegateUser = _store.GetAllUsers()
-                    .FirstOrDefault(u => u.Role == "delegate" &&
-                                         (u.ManagedFaculties.Contains(reg.Faculty ?? "") ||
-                                          u.DelegationName == reg.Faculty));
+                var delegation = DelegateDirectory.Lookup(reg.Faculty);
 
                 await _email.SendRegistrationValidatedAsync(
-                    toEmail:       reg.Email,
-                    toName:        $"{reg.Name} {reg.Lastname}",
-                    delegateName:  delegateUser?.DelegationName ?? "el/la delegado/a de tu facultad",
-                    delegateEmail: delegateUser?.Email ?? "",
-                    filialName:    delegateUser?.Filial ?? reg.Faculty ?? "");
+                    toEmail:    reg.Email,
+                    toName:     $"{reg.Name} {reg.Lastname}",
+                    delegation: delegation);
             }
 
             return Ok(reg);

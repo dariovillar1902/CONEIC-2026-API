@@ -201,11 +201,48 @@ internal static class EmailTemplates
         </table>
         """;
 
+    /// Bloque de contacto de delegación (sin email — solo WhatsApp).
+    private static string DelegationContactBox(DelegationInfo? delegation)
+    {
+        string inner;
+
+        if (delegation is null)
+        {
+            inner = $"""
+                <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:{BgHeader};">
+                  Próximo paso: contactate por WhatsApp con el/la delegado/a de tu facultad
+                </p>
+                <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
+                  Comunicate directamente con la persona responsable de tu universidad para
+                  coordinar los siguientes pasos del proceso de inscripción.
+                </p>
+                """;
+        }
+        else
+        {
+            var contactRows = string.Concat(delegation.Contacts.Select(c =>
+                $"""<p style="margin:0 0 2px;font-size:13px;color:{ColorText};">• {c.Name} – {c.Phone}</p>"""));
+
+            inner = $"""
+                <p style="margin:0 0 10px;font-size:13px;font-weight:bold;color:{BgHeader};">
+                  Próximo paso: contactate por WhatsApp con tu delegación
+                </p>
+                <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};">
+                  Delegación: <strong style="color:{ColorText};">{delegation.DelegationName}</strong>
+                </p>
+                <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};">Contacto:</p>
+                {contactRows}
+                """;
+        }
+
+        return GoldBox(inner);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 1. Pre-inscripción recibida
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationReceived(
-        string toName, string faculty, string delegateName, string delegateEmail, string filialName)
+        string toName, string faculty, DelegationInfo? delegation)
     {
         var subject = "¡Pre-Inscripción recibida! – CONEIC XVIII";
 
@@ -225,24 +262,10 @@ internal static class EmailTemplates
               próxima semana.
             </p>
             <p style="margin:0 0 8px;font-size:15px;line-height:1.75;color:{ColorText};">
-              Ante cualquier duda o consulta, podés comunicarte con tu delegado/a para recibir más
-              información y resolver cualquier inquietud.
+              Ante cualquier duda o consulta, podés comunicarte directamente con tu delegación
+              por WhatsApp.
             </p>
-            {GoldBox($"""
-              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:{BgHeader};">
-                Próximo paso: contactate directamente con tu delegado/a o vocal asignado/a
-              </p>
-              <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                Filial: <strong style="color:{ColorText};">{filialName}</strong>
-              </p>
-              <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                Contacto: <strong style="color:{ColorText};">{delegateName}</strong>
-              </p>
-              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                <a href="mailto:{delegateEmail}" style="color:{BgHeader};font-weight:bold;
-                   text-decoration:underline;">{delegateEmail}</a>
-              </p>
-            """)}
+            {DelegationContactBox(delegation)}
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
               Mientras tanto, podés seguir las novedades del congreso a través de nuestras
               redes sociales
@@ -263,7 +286,7 @@ internal static class EmailTemplates
     // 2. Inscripción habilitada
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationValidated(
-        string toName, string delegateName, string delegateEmail, string filialName)
+        string toName, DelegationInfo? delegation)
     {
         var subject = "Inscripción habilitada – CONEIC XVIII";
         var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Inscripción habilitada");
@@ -276,28 +299,14 @@ internal static class EmailTemplates
               <strong>¡Tu inscripción al CONEIC XVIII fue habilitada correctamente!</strong>
             </p>
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
-              El próximo paso es comunicarte con tu delegado/a para coordinar el pago y continuar
+              El próximo paso es comunicarte con tu delegación para coordinar el pago y continuar
               con el proceso de inscripción.
             </p>
             <p style="margin:0 0 8px;font-size:15px;line-height:1.75;color:{ColorText};">
               En caso de no comunicarte dentro del plazo indicado, tu lugar podrá ser liberado
               y reasignado a otra persona en lista de espera.
             </p>
-            {GoldBox($"""
-              <p style="margin:0 0 8px;font-size:13px;font-weight:bold;color:{BgHeader};">
-                Próximo paso: contactate directamente con tu delegado/a o vocal asignado/a
-              </p>
-              <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                Filial: <strong style="color:{ColorText};">{filialName}</strong>
-              </p>
-              <p style="margin:0 0 4px;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                Contacto: <strong style="color:{ColorText};">{delegateName}</strong>
-              </p>
-              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.6;">
-                <a href="mailto:{delegateEmail}" style="color:{BgHeader};font-weight:bold;
-                   text-decoration:underline;">{delegateEmail}</a>
-              </p>
-            """)}
+            {DelegationContactBox(delegation)}
             {BlueBox($"""
               <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
                 Te recordamos que, una vez realizado el pago, la acreditación en nuestro sistema
@@ -392,7 +401,7 @@ internal static class EmailTemplates
               </p>
             """)}
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
-              Ante cualquier duda, podés comunicarte con tu delegado/a.
+              Ante cualquier duda, podés comunicarte con tu delegación por WhatsApp.
             </p>
             <p style="margin:0;font-size:15px;line-height:1.75;color:{ColorText};">
               Te invitamos a seguir todas las novedades a través de nuestra

@@ -10,8 +10,7 @@ public interface IEmailService
     Task SendRegistrationReceivedAsync(RegistrationEmailData data);
 
     /// <summary>Envía el email de inscripción habilitada (delegado habilitó al alumno).</summary>
-    Task SendRegistrationValidatedAsync(string toEmail, string toName,
-        string delegateName, string delegateEmail, string filialName);
+    Task SendRegistrationValidatedAsync(string toEmail, string toName, DelegationInfo? delegation);
 
     /// <summary>Envía el email de inscripción confirmada (pago completo).</summary>
     Task SendRegistrationConfirmedAsync(string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl);
@@ -24,8 +23,5 @@ public record RegistrationEmailData(
     string ToEmail,
     string ToName,
     string Faculty,
-    string DelegateName,
-    string DelegateEmail,
-    string FilialName,
-    string WebUrl
+    DelegationInfo? Delegation
 );

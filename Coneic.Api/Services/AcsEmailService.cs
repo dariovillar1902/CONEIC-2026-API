@@ -27,15 +27,14 @@ public class AcsEmailService : IEmailService
     public async Task SendRegistrationReceivedAsync(RegistrationEmailData data)
     {
         var (subject, html) = EmailTemplates.RegistrationReceived(
-            data.ToName, data.Faculty, data.DelegateName, data.DelegateEmail, data.FilialName);
+            data.ToName, data.Faculty, data.Delegation);
         await SendAsync(data.ToEmail, data.ToName, subject, html);
     }
 
-    public async Task SendRegistrationValidatedAsync(string toEmail, string toName,
-        string delegateName, string delegateEmail, string filialName)
+    public async Task SendRegistrationValidatedAsync(
+        string toEmail, string toName, DelegationInfo? delegation)
     {
-        var (subject, html) = EmailTemplates.RegistrationValidated(
-            toName, delegateName, delegateEmail, filialName);
+        var (subject, html) = EmailTemplates.RegistrationValidated(toName, delegation);
         await SendAsync(toEmail, toName, subject, html);
     }
 
@@ -68,7 +67,7 @@ public class AcsEmailService : IEmailService
                 content: new EmailContent(subject)
                 {
                     Html = htmlBody,
-                    PlainText = $"Abrí este email en un cliente que soporte HTML para verlo correctamente."
+                    PlainText = "Abrí este email en un cliente que soporte HTML para verlo correctamente."
                 });
 
             message.Headers.Add("From", $"{SenderName} <{SenderAddress}>");

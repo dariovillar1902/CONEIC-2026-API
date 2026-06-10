@@ -27,11 +27,30 @@ namespace Coneic.Api.Controllers
             _blob  = blob;
         }
 
+        // ── Helpers ─────────────────────────────────────────────────────────────
+
+        private static string GetPaymentDeadline(string? stageName) => stageName switch
+        {
+            "1ª Etapa" or "Primera Etapa" => "8 de julio de 2026",
+            "2ª Etapa" or "Segunda Etapa" => "12 de agosto de 2026",
+            "3ª Etapa" or "Tercera Etapa" => "16 de septiembre de 2026",
+            _ => "la fecha indicada por tu delegado/a"
+        };
+
         // ── Create ──────────────────────────────────────────────────────────────
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Registration registration)
         {
+            // Check DNI duplicate before email check
+            if (!string.IsNullOrWhiteSpace(registration.Dni))
+            {
+                var existingByDni = _store.GetAllRegistrations()
+                    .FirstOrDefault(r => r.Dni == registration.Dni);
+                if (existingByDni != null)
+                    return Conflict(new { message = "Ya existe una inscripción con ese DNI." });
+            }
+
             var created = _store.AddRegistration(registration);
             if (created == null)
                 return Conflict(new { message = "Ya existe una inscripción con ese email." });
@@ -129,11 +148,13 @@ namespace Coneic.Api.Controllers
             if (dto.IsEnabled && !wasEnabled && reg != null)
             {
                 var delegation = DelegateDirectory.Lookup(reg.Faculty);
+                var deadline   = GetPaymentDeadline(reg.StageName);
 
                 await _email.SendRegistrationValidatedAsync(
-                    toEmail:    reg.Email,
-                    toName:     $"{reg.Name} {reg.Lastname}",
-                    delegation: delegation);
+                    toEmail:         reg.Email,
+                    toName:          $"{reg.Name} {reg.Lastname}",
+                    delegation:      delegation,
+                    paymentDeadline: deadline);
             }
 
             return Ok(reg);
@@ -159,6 +180,40 @@ namespace Coneic.Api.Controllers
         {
             if (!_store.UpdateRegistration(id, updated)) return NotFound();
             return Ok(_store.GetRegistrationById(id));
+        }
+
+        // ── Delegation directory lookup ─────────────────────────────────────────
+
+        [HttpGet("directory")]
+        public IActionResult GetDirectory([FromQuery] string? faculty)
+        {
+            var info = DelegateDirectory.Lookup(faculty ?? "");
+            return Ok(info);
+        }
+
+        // ── Tesorería: confirm payment and send credentials email ───────────────
+
+        [HttpPost("{id}/confirm-payment")]
+        public async Task<IActionResult> ConfirmPayment(int id)
+        {
+            var reg = _store.GetRegistrationById(id);
+            if (reg == null) return NotFound();
+            if (reg.Status == "Paid")
+                return BadRequest(new { message = "Este pago ya fue confirmado." });
+
+            if (!_store.UpdateStatus(id, "Paid")) return NotFound();
+
+            var tempPassword = GeneratePassword();
+            _store.CreateUserFromRegistration(reg.Email, tempPassword);
+
+            await _email.SendRegistrationConfirmedAsync(
+                toEmail:       reg.Email,
+                toName:        $"{reg.Name} {reg.Lastname}",
+                paymentDetail: reg.PaymentCondition ?? "Pago completo",
+                tempPassword:  tempPassword,
+                loginUrl:      LoginUrl);
+
+            return Ok(new { registration = _store.GetRegistrationById(id), generatedPassword = tempPassword });
         }
 
         // ── File upload → Azure Blob Storage ───────────────────────────────────
@@ -277,8 +332,8 @@ namespace Coneic.Api.Controllers
             {
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
                 "Grupo Sanguíneo", "Afecciones", "Contacto Emergencia", "Tel. Emergencia",
-                "Etapa", "Precio", "Estado", "Habilitado", "Condición de Pago",
-                "Monto Pagado", "Monto Pendiente", "Método de Pago", "Observaciones", "Fecha Inscripción"
+                "Etapa", "Precio", "Habilitado", "Condición de Pago",
+                "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción"
             };
 
             for (int i = 0; i < headers.Length; i++)
@@ -306,14 +361,12 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 11).Value = r.EmergencyContactPhone;
                 ws.Cell(row, 12).Value = r.StageName;
                 ws.Cell(row, 13).Value = (double)r.Price;
-                ws.Cell(row, 14).Value = r.Status;
-                ws.Cell(row, 15).Value = r.IsEnabled ? "Sí" : "No";
-                ws.Cell(row, 16).Value = r.PaymentCondition ?? "Sin asignar";
-                ws.Cell(row, 17).Value = (double)r.AmountPaid;
-                ws.Cell(row, 18).Value = (double)r.AmountPending;
-                ws.Cell(row, 19).Value = r.PaymentMethod ?? "";
-                ws.Cell(row, 20).Value = r.Observations ?? "";
-                ws.Cell(row, 21).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
+                ws.Cell(row, 14).Value = r.IsEnabled ? "Sí" : "No";
+                ws.Cell(row, 15).Value = r.PaymentCondition ?? "Sin asignar";
+                ws.Cell(row, 16).Value = (double)r.AmountPaid;
+                ws.Cell(row, 17).Value = (double)r.AmountPending;
+                ws.Cell(row, 18).Value = r.Observations ?? "";
+                ws.Cell(row, 19).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
                 row++;
             }
 

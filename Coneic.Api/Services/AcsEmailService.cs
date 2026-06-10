@@ -32,9 +32,9 @@ public class AcsEmailService : IEmailService
     }
 
     public async Task SendRegistrationValidatedAsync(
-        string toEmail, string toName, DelegationInfo? delegation)
+        string toEmail, string toName, DelegationInfo? delegation, string paymentDeadline)
     {
-        var (subject, html) = EmailTemplates.RegistrationValidated(toName, delegation);
+        var (subject, html) = EmailTemplates.RegistrationValidated(toName, delegation, paymentDeadline);
         await SendAsync(toEmail, toName, subject, html);
     }
 

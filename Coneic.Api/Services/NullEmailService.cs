@@ -20,11 +20,11 @@ public class NullEmailService : IEmailService
     }
 
     public Task SendRegistrationValidatedAsync(
-        string toEmail, string toName, DelegationInfo? delegation)
+        string toEmail, string toName, DelegationInfo? delegation, string paymentDeadline)
     {
         _logger.LogInformation(
-            "[DEV EMAIL] RegistrationValidated → {Email} ({Name}) | Delegación: {Delegation}",
-            toEmail, toName, delegation?.DelegationName ?? "—");
+            "[DEV EMAIL] RegistrationValidated → {Email} ({Name}) | Delegación: {Delegation} | Vence: {Deadline}",
+            toEmail, toName, delegation?.DelegationName ?? "—", paymentDeadline);
         return Task.CompletedTask;
     }
 

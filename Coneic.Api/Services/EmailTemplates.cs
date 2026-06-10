@@ -145,6 +145,15 @@ internal static class EmailTemplates
         </table>
         """;
 
+    /// Caja roja (urgente / fecha límite).
+    private static string RedBox(string content) => $"""
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+               style="margin:20px 0;border-left:4px solid #C00000;
+                      background-color:#FEF2F2;border-radius:0 6px 6px 0;">
+          <tr><td style="padding:16px 20px;">{content}</td></tr>
+        </table>
+        """;
+
     /// Caja de advertencia amarilla.
     private static string WarningBox(string content) => $"""
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
@@ -286,7 +295,7 @@ internal static class EmailTemplates
     // 2. Inscripción habilitada
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationValidated(
-        string toName, DelegationInfo? delegation)
+        string toName, DelegationInfo? delegation, string paymentDeadline)
     {
         var subject = "Inscripción habilitada – CONEIC XVIII";
         var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Inscripción habilitada");
@@ -307,6 +316,11 @@ internal static class EmailTemplates
               y reasignado a otra persona en lista de espera.
             </p>
             {DelegationContactBox(delegation)}
+            {RedBox($"""
+              <p style="margin:0;font-size:13px;font-weight:bold;color:#C00000;line-height:1.7;">
+                Podés realizar tu pago hasta el {paymentDeadline}.
+              </p>
+            """)}
             {BlueBox($"""
               <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
                 Te recordamos que, una vez realizado el pago, la acreditación en nuestro sistema

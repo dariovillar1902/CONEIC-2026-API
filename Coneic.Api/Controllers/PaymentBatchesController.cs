@@ -50,45 +50,21 @@ namespace Coneic.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] PaymentBatch batch)
+        public IActionResult Create([FromBody] PaymentBatch batch)
         {
             if (string.IsNullOrWhiteSpace(batch.DelegateEmail))
                 return BadRequest(new { message = "DelegateEmail es requerido." });
 
             var created = _store.AddPaymentBatch(batch);
 
-            // Procesar cada asignación: actualizar paymentCondition y enviar emails
+            // Actualizar paymentCondition en cada registro asignado.
+            // La confirmación de pago (email + creación de usuario) la gestiona tesorería
+            // desde su panel usando POST /api/registrations/{id}/confirm-payment.
             foreach (var assignment in created.Assignments)
             {
                 var reg = _store.GetRegistrationById(assignment.RegistrationId);
                 if (reg == null) continue;
-
-                // Actualizar paymentCondition en el registro (preserva isEnabled actual)
                 _store.UpdatePayment(assignment.RegistrationId, reg.IsEnabled, assignment.PaymentType);
-
-                switch (assignment.PaymentType)
-                {
-                    case "Pagó Completo":
-                    case "Pagó 2° Cuota":
-                    {
-                        // Crear usuario en portal y enviar email de confirmación
-                        var tempPassword = GeneratePassword();
-                        _store.CreateUserFromRegistration(reg.Email, tempPassword);
-                        await _email.SendRegistrationConfirmedAsync(
-                            toEmail:       reg.Email,
-                            toName:        $"{reg.Name} {reg.Lastname}",
-                            paymentDetail: assignment.PaymentType,
-                            tempPassword:  tempPassword,
-                            loginUrl:      LoginUrl);
-                        break;
-                    }
-                    case "Pagó 1° Cuota":
-                        await _email.SendFirstPaymentReceivedAsync(
-                            toEmail: reg.Email,
-                            toName:  $"{reg.Name} {reg.Lastname}",
-                            dueDate: "a confirmar con tu delegado/a");
-                        break;
-                }
             }
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);

@@ -1,0 +1,35 @@
+name: Deploy API — Dev
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy to Dev
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Coneic.Api/Coneic.Api.csproj
+
+      - name: Build
+        run: dotnet build Coneic.Api/Coneic.Api.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish Coneic.Api/Coneic.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Deploy to Azure Web App (Dev)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: coneic-2026-api-dev
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
+          package: ./publish

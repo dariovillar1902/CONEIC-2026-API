@@ -84,5 +84,51 @@ namespace Coneic.Api.Controllers
             if (!_store.DeletePaymentBatch(id)) return NotFound();
             return NoContent();
         }
+
+        /// <summary>
+        /// Tesorería validates receipt: marks batch as validated and sends emails
+        /// based on payment type per assignment ("Pagó Completo", "Pagó 1° Cuota", "Pagó 2° Cuota").
+        /// </summary>
+        [HttpPost("{id}/validate")]
+        public async Task<IActionResult> Validate(int id)
+        {
+            var batch = _store.GetPaymentBatchById(id);
+            if (batch == null) return NotFound();
+            if (batch.IsValidated)
+                return BadRequest(new { message = "Este comprobante ya fue validado." });
+
+            var validated = _store.ValidateBatch(id);
+            if (validated == null) return NotFound();
+
+            foreach (var assignment in validated.Assignments)
+            {
+                var reg = _store.GetRegistrationById(assignment.RegistrationId);
+                if (reg == null) continue;
+
+                var fullName = $"{reg.Name} {reg.Lastname}";
+
+                if (assignment.PaymentType == "Pagó 1° Cuota")
+                {
+                    await _email.SendFirstPaymentReceivedAsync(reg.Email, fullName, "a confirmar");
+                }
+                else if (assignment.PaymentType is "Pagó Completo" or "Pagó 2° Cuota")
+                {
+                    if (reg.Status != "Paid")
+                    {
+                        _store.UpdateStatus(assignment.RegistrationId, "Paid");
+                        var tempPassword = GeneratePassword();
+                        _store.CreateUserFromRegistration(reg.Email, tempPassword);
+                        await _email.SendRegistrationConfirmedAsync(
+                            toEmail: reg.Email,
+                            toName: fullName,
+                            paymentDetail: assignment.PaymentType,
+                            tempPassword: tempPassword,
+                            loginUrl: LoginUrl);
+                    }
+                }
+            }
+
+            return Ok(validated);
+        }
     }
 }

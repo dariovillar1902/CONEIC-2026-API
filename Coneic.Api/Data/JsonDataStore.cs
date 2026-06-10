@@ -368,6 +368,19 @@ namespace Coneic.Api.Data
             }
         }
 
+        public PaymentBatch? ValidateBatch(int id)
+        {
+            lock (_lock)
+            {
+                var batch = _paymentBatches.FirstOrDefault(b => b.Id == id);
+                if (batch == null) return null;
+                batch.IsValidated = true;
+                batch.ValidatedAt = DateTime.Now;
+                Persist();
+                return batch;
+            }
+        }
+
         // ── Persistence ────────────────────────────────────────────────────────
 
         private void Persist()

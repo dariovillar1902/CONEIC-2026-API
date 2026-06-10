@@ -19,8 +19,8 @@ internal static class EmailTemplates
     // ── URLs corporativas ─────────────────────────────────────────────────────
     private const string WebUrl       = "https://coneic2026.com.ar";
     private const string LoginUrl     = "https://coneic2026.com.ar/login";
-    private const string InstagramUrl = "https://www.instagram.com/coneicxviii";
-    private const string LinkedInUrl  = "https://www.linkedin.com/company/coneic2026";
+    private const string InstagramUrl = "https://www.instagram.com/coneicarg/";
+    private const string LinkedInUrl  = "https://www.linkedin.com/company/coneic-xviii-argentina";
     private const string LogoUrl      = "https://coneic2026.com.ar/assets/LOGO_H-CONEIC-COLOR-BLANCO.png";
 
     // ═══════════════════════════════════════════════════════════════════════════

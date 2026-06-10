@@ -30,6 +30,12 @@ namespace Coneic.Api.Models
 
         /// <summary>Whether the delegate requested an invoice for this batch.</summary>
         public bool NeedsInvoice { get; set; } = false;
+
+        /// <summary>Whether tesorería confirmed receipt of this payment.</summary>
+        public bool IsValidated { get; set; } = false;
+
+        /// <summary>When tesorería confirmed receipt.</summary>
+        public DateTime? ValidatedAt { get; set; }
     }
 
     /// <summary>Links one registration to a specific payment type within a batch.</summary>

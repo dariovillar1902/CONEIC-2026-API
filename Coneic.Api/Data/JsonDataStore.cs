@@ -93,6 +93,27 @@ namespace Coneic.Api.Data
             _nextBatchId = _paymentBatches.Count > 0
                 ? _paymentBatches.Max(b => b.Id) + 1
                 : 1;
+
+            // One-time migration: ensure role-specific accounts have the correct role
+            ApplyRoleMigrations();
+        }
+
+        private void ApplyRoleMigrations()
+        {
+            bool changed = false;
+            var roleMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["tesoreria@coneic2026.com.ar"] = "tesoreria",
+            };
+            foreach (var user in _users)
+            {
+                if (roleMap.TryGetValue(user.Email, out var expectedRole) && user.Role != expectedRole)
+                {
+                    user.Role = expectedRole;
+                    changed = true;
+                }
+            }
+            if (changed) Persist();
         }
 
         // ── Users ──────────────────────────────────────────────────────────────

@@ -1,0 +1,96 @@
+name: Sync Users — Prod → Dev
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # cada 30 minutos
+  workflow_dispatch:
+
+# Prod usa JsonDataStore (data.json en /home/coneic-data/).
+# Dev usa EF Core + SQLite (/home/coneic-dev.db).
+# Este action lee los usuarios del data.json de prod via Kudu VFS
+# y hace upsert en el SQLite de dev para mantenerlos sincronizados.
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sync prod users to dev SQLite
+
+    steps:
+      - name: Sync users
+        env:
+          PROD_KUDU_USER: ${{ secrets.AZURE_PROD_KUDU_USER }}
+          PROD_KUDU_PASS: ${{ secrets.AZURE_PROD_KUDU_PASS }}
+          DEV_KUDU_USER:  ${{ secrets.AZURE_DEV_KUDU_USER }}
+          DEV_KUDU_PASS:  ${{ secrets.AZURE_DEV_KUDU_PASS }}
+        run: |
+          python3 << 'PYEOF'
+          import os, sys, json, requests
+
+          PROD_SCM = "https://coneic-2026-api.scm.azurewebsites.net"
+          DEV_SCM  = "https://coneic-2026-api-dev.scm.azurewebsites.net"
+          DEV_DB   = "/home/coneic-dev.db"
+
+          prod_auth = (os.environ["PROD_KUDU_USER"], os.environ["PROD_KUDU_PASS"])
+          dev_auth  = (os.environ["DEV_KUDU_USER"],  os.environ["DEV_KUDU_PASS"])
+
+          def kudu_cmd(scm, auth, cmd):
+              r = requests.post(f"{scm}/api/command",
+                  auth=auth, json={"command": cmd, "dir": "/"}, timeout=60)
+              r.raise_for_status()
+              return r.json()
+
+          def q(s):
+              if s is None:
+                  return "NULL"
+              return "'" + str(s).replace("'", "''") + "'"
+
+          # ── 1. Download prod data.json via Kudu VFS ────────────────────────
+          r = requests.get(f"{PROD_SCM}/api/vfs/coneic-data/data.json",
+                           auth=prod_auth, timeout=30)
+          r.raise_for_status()
+          prod_users = r.json().get("users", [])
+          print(f"Prod data.json: {len(prod_users)} users")
+
+          # ── 2. Get dev Users schema ────────────────────────────────────────
+          schema_res = kudu_cmd(DEV_SCM, dev_auth,
+              f'sqlite3 {DEV_DB} ".timeout 5000" "PRAGMA table_info(Users);"')
+          dev_cols = [row.split("|")[1] for row in
+                      schema_res.get("Output","").strip().split("\n") if "|" in row]
+          has_extra = "Filial" in dev_cols
+          print(f"Dev Users columns: {dev_cols}")
+
+          # ── 3. Upsert each prod user into dev SQLite ───────────────────────
+          ok = 0
+          for u in prod_users:
+              uid   = int(u.get("id", u.get("Id", 0)))
+              email = q(u.get("email", u.get("Email")))
+              pwd   = q(u.get("password", u.get("Password")))
+              role  = q(u.get("role", u.get("Role")))
+              deleg = q(u.get("delegationName", u.get("DelegationName")))
+
+              if has_extra:
+                  filial   = q(u.get("filial", u.get("Filial")))
+                  managed  = q(u.get("managedFaculties", u.get("ManagedFaculties", "[]")))
+                  must_chg = int(bool(u.get("mustChangePassword",
+                                           u.get("MustChangePassword", False))))
+                  sql = (
+                      f"INSERT OR REPLACE INTO Users "
+                      f"(Id,Email,Password,Role,DelegationName,Filial,ManagedFaculties,MustChangePassword) "
+                      f"VALUES ({uid},{email},{pwd},{role},{deleg},{filial},{managed},{must_chg});"
+                  )
+              else:
+                  sql = (
+                      f"INSERT OR REPLACE INTO Users "
+                      f"(Id,Email,Password,Role,DelegationName) "
+                      f"VALUES ({uid},{email},{pwd},{role},{deleg});"
+                  )
+
+              res = kudu_cmd(DEV_SCM, dev_auth,
+                  f'sqlite3 {DEV_DB} ".timeout 5000" "{sql}"')
+              if res.get("ExitCode", 0) != 0:
+                  print(f"  ERROR user {uid} ({u.get('email')}): {res.get('Error')}", file=sys.stderr)
+              else:
+                  ok += 1
+
+          print(f"Synced {ok}/{len(prod_users)} users to dev")
+          PYEOF

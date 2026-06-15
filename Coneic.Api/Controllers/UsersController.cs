@@ -40,6 +40,25 @@ namespace Coneic.Api.Controllers
             });
         }
 
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            var user = _db.Users.Find(id);
+            if (user == null) return NotFound();
+            _db.Users.Remove(user);
+            _db.SaveChanges();
+            return Ok(new { message = $"Usuario {user.Email} eliminado." });
+        }
+
+        [HttpDelete("by-role/{role}")]
+        public IActionResult DeleteByRole(string role)
+        {
+            var users = _db.Users.Where(u => u.Role == role).ToList();
+            _db.Users.RemoveRange(users);
+            _db.SaveChanges();
+            return Ok(new { deleted = users.Count, emails = users.Select(u => u.Email) });
+        }
+
         [HttpPost("change-password")]
         public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
         {

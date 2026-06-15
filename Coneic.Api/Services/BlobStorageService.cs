@@ -9,8 +9,8 @@ public class BlobStorageService : IBlobStorageService
     private readonly BlobServiceClient _client;
     private readonly ILogger<BlobStorageService> _logger;
 
-    private const string ContainerCertificados = "certificados";
-    private const string ContainerComprobantes = "comprobantes";
+    private readonly string _containerCertificados;
+    private readonly string _containerComprobantes;
 
     public BlobStorageService(IConfiguration config, ILogger<BlobStorageService> logger)
     {
@@ -18,6 +18,8 @@ public class BlobStorageService : IBlobStorageService
             ?? throw new InvalidOperationException("AZURE_STORAGE_CONNECTION_STRING no está configurado.");
         _client = new BlobServiceClient(connectionString);
         _logger = logger;
+        _containerCertificados = config["BLOB_CONTAINER_CERTIFICADOS"] ?? "certificados";
+        _containerComprobantes = config["BLOB_CONTAINER_COMPROBANTES"] ?? "comprobantes";
     }
 
     public async Task<string> UploadCertificateAsync(
@@ -30,7 +32,7 @@ public class BlobStorageService : IBlobStorageService
         var fileName  = $"{Slugify(dni)}-{Slugify(apellido)}-{Slugify(nombre)}{extension}";
         var blobName  = $"{facultySlug}/{month}/{fileName}";
 
-        return await UploadAsync(ContainerCertificados, blobName, fileStream, contentType);
+        return await UploadAsync(_containerCertificados, blobName, fileStream, contentType);
     }
 
     public async Task<string> UploadComprobanteAsync(
@@ -41,13 +43,13 @@ public class BlobStorageService : IBlobStorageService
         var delegateSlug = Slugify(delegateEmail.Split('@')[0]);
         var blobName     = $"{delegateSlug}/{month}/{Guid.NewGuid():N}{extension}";
 
-        return await UploadAsync(ContainerComprobantes, blobName, fileStream, contentType);
+        return await UploadAsync(_containerComprobantes, blobName, fileStream, contentType);
     }
 
     public async Task<string> UploadGenericAsync(Stream fileStream, string contentType, string extension)
     {
         var blobName = $"misc/{DateTime.Now:yyyy-MM}/{Guid.NewGuid():N}{extension}";
-        return await UploadAsync(ContainerComprobantes, blobName, fileStream, contentType);
+        return await UploadAsync(_containerComprobantes, blobName, fileStream, contentType);
     }
 
     // ── Interno ───────────────────────────────────────────────────────────────

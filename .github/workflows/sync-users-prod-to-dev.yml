@@ -1,0 +1,104 @@
+name: Sync Users — Prod → Dev
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # cada 30 minutos
+  workflow_dispatch:
+  push:
+    branches:
+      - main                  # también al deployar a prod
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sync prod users to dev SQLite
+
+    steps:
+      - name: Sync users
+        env:
+          PROD_KUDU_USER: ${{ secrets.AZURE_PROD_KUDU_USER }}
+          PROD_KUDU_PASS: ${{ secrets.AZURE_PROD_KUDU_PASS }}
+          DEV_KUDU_USER:  ${{ secrets.AZURE_DEV_KUDU_USER }}
+          DEV_KUDU_PASS:  ${{ secrets.AZURE_DEV_KUDU_PASS }}
+        run: |
+          python3 << 'PYEOF'
+          import os, sys, json, requests, time
+
+          PROD_URL = "https://coneic-2026-api.scm.azurewebsites.net"
+          DEV_URL  = "https://coneic-2026-api-dev.scm.azurewebsites.net"
+
+          prod_auth = (os.environ["PROD_KUDU_USER"], os.environ["PROD_KUDU_PASS"])
+          dev_auth  = (os.environ["DEV_KUDU_USER"],  os.environ["DEV_KUDU_PASS"])
+
+          PROD_DB = "/home/coneic.db"
+          DEV_DB  = "/home/coneic-dev.db"
+
+          def kudu(base, auth, cmd, dir="/"):
+              r = requests.post(f"{base}/api/command",
+                  auth=auth,
+                  json={"command": cmd, "dir": dir},
+                  timeout=60)
+              r.raise_for_status()
+              return r.json()
+
+          def q(s):
+              """Escape single quotes for SQLite."""
+              if s is None:
+                  return "NULL"
+              return "'" + str(s).replace("'", "''") + "'"
+
+          # ── 1. Verificar que las DBs existan ──────────────────────────────
+          for base, auth, db in [(PROD_URL, prod_auth, PROD_DB), (DEV_URL, dev_auth, DEV_DB)]:
+              res = kudu(base, auth, f'test -f {db} && echo ok || echo missing')
+              if "missing" in res.get("Output", ""):
+                  print(f"DB {db} not found on {base} — skipping sync.")
+                  sys.exit(0)
+
+          # ── 2. Obtener schema de dev (puede tener columnas extra) ─────────
+          dev_schema = kudu(DEV_URL, dev_auth,
+              f'sqlite3 {DEV_DB} ".timeout 5000" "PRAGMA table_info(Users);"')
+          dev_cols = [row.split("|")[1] for row in
+                      dev_schema.get("Output","").strip().split("\n") if "|" in row]
+          print(f"Dev Users columns: {dev_cols}")
+
+          has_extra = "Filial" in dev_cols   # AddCoreEntities migration applied on dev
+
+          # ── 3. Leer todos los usuarios de prod ────────────────────────────
+          prod_res = kudu(PROD_URL, prod_auth,
+              f'sqlite3 {PROD_DB} ".timeout 5000" ".mode json" "SELECT * FROM Users;"')
+          prod_users = json.loads(prod_res.get("Output", "[]").strip() or "[]")
+          print(f"Found {len(prod_users)} users in prod")
+
+          # ── 4. Upsert en dev ──────────────────────────────────────────────
+          for u in prod_users:
+              uid   = int(u["Id"])
+              email = q(u.get("Email"))
+              pwd   = q(u.get("Password"))
+              role  = q(u.get("Role"))
+              deleg = q(u.get("DelegationName"))
+
+              if has_extra:
+                  filial    = q(u.get("Filial"))
+                  managed   = q(u.get("ManagedFaculties", "[]"))
+                  must_chg  = int(bool(u.get("MustChangePassword", False)))
+                  sql = (
+                      f"INSERT OR REPLACE INTO Users "
+                      f"(Id,Email,Password,Role,DelegationName,Filial,ManagedFaculties,MustChangePassword) "
+                      f"VALUES ({uid},{email},{pwd},{role},{deleg},{filial},{managed},{must_chg});"
+                  )
+              else:
+                  sql = (
+                      f"INSERT OR REPLACE INTO Users "
+                      f"(Id,Email,Password,Role,DelegationName) "
+                      f"VALUES ({uid},{email},{pwd},{role},{deleg});"
+                  )
+
+              res = kudu(DEV_URL, dev_auth,
+                  f'sqlite3 {DEV_DB} ".timeout 5000" "{sql}"')
+              if res.get("ExitCode", 0) != 0:
+                  print(f"  ERROR on user {uid}: {res.get('Error')}", file=sys.stderr)
+              else:
+                  print(f"  Synced user {uid}: {u.get('Email')}")
+
+          print("✓ Sync complete")
+          PYEOF

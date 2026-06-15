@@ -23,10 +23,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Azure Application Insights — telemetría del backend
-// Rastrea requests, dependencias, excepciones y tiempos de respuesta.
-// Requiere la variable de entorno APPLICATIONINSIGHTS_CONNECTION_STRING.
-builder.Services.AddApplicationInsightsTelemetry();
+// Azure Application Insights — only registered when connection string is present
+var appInsightsConn = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(appInsightsConn))
+    builder.Services.AddApplicationInsightsTelemetry();
 
 // Azure Blob Storage — para certificados de alumnos y comprobantes de pago
 builder.Services.AddSingleton<IBlobStorageService, BlobStorageService>();

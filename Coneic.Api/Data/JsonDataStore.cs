@@ -305,6 +305,7 @@ namespace Coneic.Api.Data
                 reg.AmountPaid            = updated.AmountPaid;
                 reg.AmountPending         = updated.AmountPending;
                 reg.Observations          = updated.Observations;
+                reg.DietaryRestrictions   = updated.DietaryRestrictions;
                 Persist();
                 return true;
             }

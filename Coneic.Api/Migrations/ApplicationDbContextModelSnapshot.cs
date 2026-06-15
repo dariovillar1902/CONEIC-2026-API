@@ -355,6 +355,9 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("CertificateFileName")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DietaryRestrictions")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 

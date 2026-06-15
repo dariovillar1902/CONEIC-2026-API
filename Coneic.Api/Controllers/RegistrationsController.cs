@@ -215,6 +215,7 @@ namespace Coneic.Api.Controllers
             reg.AmountPaid            = updated.AmountPaid;
             reg.AmountPending         = updated.AmountPending;
             reg.Observations          = updated.Observations;
+            reg.DietaryRestrictions   = updated.DietaryRestrictions;
             _db.SaveChanges();
             return Ok(reg);
         }
@@ -395,7 +396,7 @@ namespace Coneic.Api.Controllers
             var headers = new[]
             {
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
-                "Grupo Sanguíneo", "Afecciones", "Contacto Emergencia", "Tel. Emergencia",
+                "Grupo Sanguíneo", "Afecciones", "Restricciones Alimentarias", "Contacto Emergencia", "Tel. Emergencia",
                 "Etapa", "Precio", "Habilitado", "Condición de Pago",
                 "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción"
             };
@@ -421,16 +422,17 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 7).Value = r.Faculty;
                 ws.Cell(row, 8).Value = r.BloodType ?? "";
                 ws.Cell(row, 9).Value = r.MedicalConditions ?? "";
-                ws.Cell(row, 10).Value = r.EmergencyContactName;
-                ws.Cell(row, 11).Value = r.EmergencyContactPhone;
-                ws.Cell(row, 12).Value = r.StageName;
-                ws.Cell(row, 13).Value = (double)r.Price;
-                ws.Cell(row, 14).Value = r.IsEnabled ? "Sí" : "No";
-                ws.Cell(row, 15).Value = r.PaymentCondition ?? "Sin asignar";
-                ws.Cell(row, 16).Value = (double)r.AmountPaid;
-                ws.Cell(row, 17).Value = (double)r.AmountPending;
-                ws.Cell(row, 18).Value = r.Observations ?? "";
-                ws.Cell(row, 19).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
+                ws.Cell(row, 10).Value = r.DietaryRestrictions ?? "";
+                ws.Cell(row, 11).Value = r.EmergencyContactName;
+                ws.Cell(row, 12).Value = r.EmergencyContactPhone;
+                ws.Cell(row, 13).Value = r.StageName;
+                ws.Cell(row, 14).Value = (double)r.Price;
+                ws.Cell(row, 15).Value = r.IsEnabled ? "Sí" : "No";
+                ws.Cell(row, 16).Value = r.PaymentCondition ?? "Sin asignar";
+                ws.Cell(row, 17).Value = (double)r.AmountPaid;
+                ws.Cell(row, 18).Value = (double)r.AmountPending;
+                ws.Cell(row, 19).Value = r.Observations ?? "";
+                ws.Cell(row, 20).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
                 row++;
             }
 

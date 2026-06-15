@@ -93,6 +93,27 @@ namespace Coneic.Api.Data
             _nextBatchId = _paymentBatches.Count > 0
                 ? _paymentBatches.Max(b => b.Id) + 1
                 : 1;
+
+            // One-time migration: ensure role-specific accounts have the correct role
+            ApplyRoleMigrations();
+        }
+
+        private void ApplyRoleMigrations()
+        {
+            bool changed = false;
+            var roleMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["tesoreria@coneic2026.com.ar"] = "tesoreria",
+            };
+            foreach (var user in _users)
+            {
+                if (roleMap.TryGetValue(user.Email, out var expectedRole) && user.Role != expectedRole)
+                {
+                    user.Role = expectedRole;
+                    changed = true;
+                }
+            }
+            if (changed) Persist();
         }
 
         // ── Users ──────────────────────────────────────────────────────────────
@@ -284,6 +305,7 @@ namespace Coneic.Api.Data
                 reg.AmountPaid            = updated.AmountPaid;
                 reg.AmountPending         = updated.AmountPending;
                 reg.Observations          = updated.Observations;
+                reg.DietaryRestrictions   = updated.DietaryRestrictions;
                 Persist();
                 return true;
             }
@@ -365,6 +387,19 @@ namespace Coneic.Api.Data
                 _paymentBatches.Remove(batch);
                 Persist();
                 return true;
+            }
+        }
+
+        public PaymentBatch? ValidateBatch(int id)
+        {
+            lock (_lock)
+            {
+                var batch = _paymentBatches.FirstOrDefault(b => b.Id == id);
+                if (batch == null) return null;
+                batch.IsValidated = true;
+                batch.ValidatedAt = DateTime.Now;
+                Persist();
+                return batch;
             }
         }
 

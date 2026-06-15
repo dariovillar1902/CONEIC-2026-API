@@ -50,6 +50,8 @@ namespace Coneic.Api.Models
 
         // New Fields (Phase 3)
         public bool ParticipatedInJoreic { get; set; }
+        public bool InterestedInMaccaferri { get; set; }
+        public string? DietaryRestrictions { get; set; }
         public string? PaymentMethod { get; set; } // MercadoPago, Transferencia, Efectivo
         public decimal AmountPaid { get; set; }
         public decimal AmountPending { get; set; }

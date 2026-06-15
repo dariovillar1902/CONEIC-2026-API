@@ -1,0 +1,45 @@
+name: Deploy API — Dev
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy to Dev
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Coneic.Api/Coneic.Api.csproj
+
+      - name: Build
+        run: dotnet build Coneic.Api/Coneic.Api.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish Coneic.Api/Coneic.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Zip artifact
+        run: cd publish && zip -r ../app.zip .
+
+      - name: Deploy via Kudu zip deploy
+        env:
+          KUDU_USER: ${{ secrets.AZURE_DEV_KUDU_USER }}
+          KUDU_PASS: ${{ secrets.AZURE_DEV_KUDU_PASS }}
+        run: |
+          curl -X POST \
+            "https://coneic-2026-api-dev.scm.azurewebsites.net/api/zipdeploy" \
+            --user "$KUDU_USER:$KUDU_PASS" \
+            --data-binary @app.zip \
+            -H "Content-Type: application/octet-stream" \
+            -f --retry 3 --retry-delay 5 \
+            -w "\nHTTP status: %{http_code}\n"

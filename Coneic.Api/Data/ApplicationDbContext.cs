@@ -1,22 +1,48 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Coneic.Api.Models;
 
 namespace Coneic.Api.Data
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-        {
-        }
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
-        // Users, Registrations, and PaymentBatches are managed by JsonDataStore — not EF Core.
+        public DbSet<User> Users { get; set; }
+        public DbSet<Registration> Registrations { get; set; }
+        public DbSet<PaymentBatch> PaymentBatches { get; set; }
         public DbSet<Speaker> Speakers { get; set; }
         public DbSet<Activity> Activities { get; set; }
         public DbSet<Photo> Photos { get; set; }
 
+        private static readonly JsonSerializerOptions _json = new();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.ManagedFaculties)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, _json),
+                    v => JsonSerializer.Deserialize<List<string>>(v, _json) ?? new List<string>())
+                .HasColumnType("TEXT")
+                .Metadata.SetValueComparer(new ValueComparer<List<string>>(
+                    (a, b) => a != null && b != null && a.SequenceEqual(b),
+                    c => c.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())),
+                    c => c.ToList()));
+
+            modelBuilder.Entity<PaymentBatch>()
+                .Property(b => b.Assignments)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, _json),
+                    v => JsonSerializer.Deserialize<List<BatchAssignment>>(v, _json) ?? new List<BatchAssignment>())
+                .HasColumnType("TEXT")
+                .Metadata.SetValueComparer(new ValueComparer<List<BatchAssignment>>(
+                    (a, b) => a != null && b != null && a.Count == b.Count,
+                    c => c.Count,
+                    c => c.ToList()));
 
             modelBuilder.Entity<Speaker>().HasData(
                 new Speaker { Id = 1, Name = "Ing. Roberto Fernández", Title = "Especialista en Estructuras y Sismología",    Bio = "Especialista en diseño sísmico y estructuras de gran escala con más de 20 años de trayectoria en obras de infraestructura.",                                                                     ImageUrl = "https://randomuser.me/api/portraits/men/32.jpg",   LinkedInUrl = "#" },

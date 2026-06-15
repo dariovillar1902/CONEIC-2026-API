@@ -42,14 +42,14 @@
         "UTN - Facultad Regional Avellaneda",
         "Universidad de Buenos Aires",
         "Universidad de Belgrano",
-        "Universidad Católica Argentina",
+        "Universidad CatÃ³lica Argentina",
         "Universidad de la Defensa Nacional",
-        "UTN - Facultad Regional Concepción del Uruguay",
+        "UTN - Facultad Regional ConcepciÃ³n del Uruguay",
         "UTN - Facultad Regional Concordia",
         "Universidad Nacional de la Matanza",
         "Universidad Nacional de La Plata",
         "UTN - Facultad Regional La Plata",
-        "Universidad Nacional de Morón"
+        "Universidad Nacional de MorÃ³n"
       ],
       "mustChangePassword": false
     },
@@ -119,17 +119,17 @@
       "email": "delegacion.utn-parana@coneic2026.com.ar",
       "password": "Phw7ntNgpe68",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional Paraná",
+      "delegationName": "UTN - Facultad Regional ParanÃ¡",
       "filial": "Centro",
       "managedFaculties": [
-        "UTN - Facultad Regional Paraná"
+        "UTN - Facultad Regional ParanÃ¡"
       ],
       "mustChangePassword": true
     },
     {
       "id": 11,
       "email": "delegacion.utn-frba@coneic2026.com.ar",
-      "password": "ykC688eDZX3@",
+      "password": "12345678",
       "role": "delegate",
       "delegationName": "UTN - Facultad Regional Buenos Aires",
       "filial": "Este",
@@ -139,10 +139,10 @@
         "Universidad de Buenos Aires",
         "Universidad de Belgrano",
         "Universidad de la Defensa Nacional",
-        "UTN - Facultad Regional Concepción del Uruguay",
+        "UTN - Facultad Regional ConcepciÃ³n del Uruguay",
         "UTN - Facultad Regional Concordia",
         "UTN - Facultad Regional La Plata",
-        "Universidad Nacional de Morón"
+        "Universidad Nacional de MorÃ³n"
       ],
       "mustChangePassword": true
     },
@@ -187,10 +187,10 @@
       "email": "delegacion.uca@coneic2026.com.ar",
       "password": "SsyUHxsE@84c",
       "role": "delegate",
-      "delegationName": "Universidad Católica Argentina",
+      "delegationName": "Universidad CatÃ³lica Argentina",
       "filial": "Este",
       "managedFaculties": [
-        "Universidad Católica Argentina"
+        "Universidad CatÃ³lica Argentina"
       ],
       "mustChangePassword": true
     },
@@ -211,10 +211,10 @@
       "email": "delegacion.unt@coneic2026.com.ar",
       "password": "bRYAMXS@ihLg",
       "role": "delegate",
-      "delegationName": "Universidad Nacional de Tucumán",
+      "delegationName": "Universidad Nacional de TucumÃ¡n",
       "filial": "Norte",
       "managedFaculties": [
-        "Universidad Nacional de Tucumán"
+        "Universidad Nacional de TucumÃ¡n"
       ],
       "mustChangePassword": true
     },
@@ -223,10 +223,10 @@
       "email": "delegacion.utn-tucuman@coneic2026.com.ar",
       "password": "XhTL#vZQnb@R",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional Tucumán",
+      "delegationName": "UTN - Facultad Regional TucumÃ¡n",
       "filial": "Norte",
       "managedFaculties": [
-        "UTN - Facultad Regional Tucumán"
+        "UTN - Facultad Regional TucumÃ¡n"
       ],
       "mustChangePassword": true
     },
@@ -283,10 +283,10 @@
       "email": "delegacion.ucasal@coneic2026.com.ar",
       "password": "EjBa9UW7G7t4",
       "role": "delegate",
-      "delegationName": "Universidad Católica de Salta",
+      "delegationName": "Universidad CatÃ³lica de Salta",
       "filial": "Norte",
       "managedFaculties": [
-        "Universidad Católica de Salta"
+        "Universidad CatÃ³lica de Salta"
       ],
       "mustChangePassword": true
     },
@@ -295,11 +295,11 @@
       "email": "delegacion.utn-cordoba@coneic2026.com.ar",
       "password": "wKNgETN8wpmn",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional Córdoba",
+      "delegationName": "UTN - Facultad Regional CÃ³rdoba",
       "filial": "Oeste",
       "managedFaculties": [
-        "UTN - Facultad Regional Córdoba",
-        "Universidad Católica de Córdoba",
+        "UTN - Facultad Regional CÃ³rdoba",
+        "Universidad CatÃ³lica de CÃ³rdoba",
         "UTN - Facultad Regional Mendoza"
       ],
       "mustChangePassword": true
@@ -309,10 +309,10 @@
       "email": "delegacion.unc@coneic2026.com.ar",
       "password": "qWSSKbtdqcdA",
       "role": "delegate",
-      "delegationName": "Universidad Nacional de Córdoba",
+      "delegationName": "Universidad Nacional de CÃ³rdoba",
       "filial": "Oeste",
       "managedFaculties": [
-        "Universidad Nacional de Córdoba"
+        "Universidad Nacional de CÃ³rdoba"
       ],
       "mustChangePassword": true
     },
@@ -417,10 +417,10 @@
       "email": "delegacion.unicen@coneic2026.com.ar",
       "password": "x6QyJx@4uGXq",
       "role": "delegate",
-      "delegationName": "Universidad Nacional del Centro - Olavarría",
+      "delegationName": "Universidad Nacional del Centro - OlavarrÃ­a",
       "filial": "Sur",
       "managedFaculties": [
-        "Universidad Nacional del Centro de la Provincia de Buenos Aires - Sede Olavarría"
+        "Universidad Nacional del Centro de la Provincia de Buenos Aires - Sede OlavarrÃ­a"
       ],
       "mustChangePassword": true
     },
@@ -441,10 +441,10 @@
       "email": "delegacion.utn-bahia-blanca@coneic2026.com.ar",
       "password": "fPfRbeHK3bry",
       "role": "delegate",
-      "delegationName": "UTN - Facultad Regional Bahía Blanca",
+      "delegationName": "UTN - Facultad Regional BahÃ­a Blanca",
       "filial": "Sur",
       "managedFaculties": [
-        "UTN - Facultad Regional Bahía Blanca"
+        "UTN - Facultad Regional BahÃ­a Blanca"
       ],
       "mustChangePassword": true
     },
@@ -473,8 +473,8 @@
     {
       "id": 39,
       "email": "tesoreria@coneic2026.com.ar",
-      "password": "Zitd9S@AbqdG",
-      "role": "admin",
+      "password": "12345678",
+      "role": "tesoreria",
       "delegationName": null,
       "filial": null,
       "managedFaculties": [],
@@ -545,7 +545,7 @@
     {
       "id": 1,
       "name": "Lucas",
-      "lastname": "Fernández",
+      "lastname": "FernÃ¡ndez",
       "dni": "40123456",
       "phone": "1145678901",
       "email": "lucas.fernandez@frba.utn.edu.ar",
@@ -553,7 +553,7 @@
       "certificateFileName": null,
       "bloodType": "O+",
       "medicalConditions": null,
-      "emergencyContactName": "Ana Fernández",
+      "emergencyContactName": "Ana FernÃ¡ndez",
       "emergencyContactPhone": "1145678902",
       "status": "Paid",
       "createdAt": "2026-05-01T10:30:00",
@@ -565,13 +565,13 @@
       "amountPaid": 100000,
       "amountPending": 0,
       "isEnabled": true,
-      "paymentCondition": "Pagó Completo",
+      "paymentCondition": "PagÃ³ Completo",
       "observations": null
     },
     {
       "id": 2,
-      "name": "María",
-      "lastname": "González",
+      "name": "MarÃ­a",
+      "lastname": "GonzÃ¡lez",
       "dni": "41234567",
       "phone": "1156789012",
       "email": "maria.gonzalez@frba.utn.edu.ar",
@@ -579,7 +579,7 @@
       "certificateFileName": null,
       "bloodType": "A+",
       "medicalConditions": "Alergia al ibuprofeno",
-      "emergencyContactName": "Carlos González",
+      "emergencyContactName": "Carlos GonzÃ¡lez",
       "emergencyContactPhone": "1156789013",
       "status": "Validated",
       "createdAt": "2026-05-02T14:15:00",
@@ -591,13 +591,13 @@
       "amountPaid": 55000,
       "amountPending": 55000,
       "isEnabled": true,
-      "paymentCondition": "Pagó 1° Cuota",
+      "paymentCondition": "PagÃ³ 1Â° Cuota",
       "observations": null
     },
     {
       "id": 3,
-      "name": "Agustín",
-      "lastname": "Ramírez",
+      "name": "AgustÃ­n",
+      "lastname": "RamÃ­rez",
       "dni": "42345678",
       "phone": "1167890123",
       "email": "agustin.ramirez@frba.utn.edu.ar",
@@ -605,7 +605,7 @@
       "certificateFileName": null,
       "bloodType": null,
       "medicalConditions": null,
-      "emergencyContactName": "Marta Ramírez",
+      "emergencyContactName": "Marta RamÃ­rez",
       "emergencyContactPhone": "1167890124",
       "status": "Pending",
       "createdAt": "2026-05-03T09:00:00",
@@ -617,7 +617,7 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": "No Pagó",
+      "paymentCondition": "No PagÃ³",
       "observations": null
     },
     {
@@ -643,12 +643,12 @@
       "amountPaid": 100000,
       "amountPending": 0,
       "isEnabled": true,
-      "paymentCondition": "Pagó Completo",
+      "paymentCondition": "PagÃ³ Completo",
       "observations": null
     },
     {
       "id": 5,
-      "name": "Nicolás",
+      "name": "NicolÃ¡s",
       "lastname": "Sosa",
       "dni": "44567890",
       "phone": "1189012345",
@@ -669,7 +669,7 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": "No Pagó",
+      "paymentCondition": "No PagÃ³",
       "observations": null
     },
     {
@@ -679,7 +679,7 @@
       "dni": "45678901",
       "phone": "3516789012",
       "email": "camila.herrera@frcba.utn.edu.ar",
-      "faculty": "UTN - Facultad Regional Córdoba",
+      "faculty": "UTN - Facultad Regional CÃ³rdoba",
       "certificateFileName": null,
       "bloodType": "O-",
       "medicalConditions": null,
@@ -695,7 +695,7 @@
       "amountPaid": 0,
       "amountPending": 100000,
       "isEnabled": false,
-      "paymentCondition": "No Pagó",
+      "paymentCondition": "No PagÃ³",
       "observations": null
     }
   ],

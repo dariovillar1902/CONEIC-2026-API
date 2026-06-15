@@ -2,6 +2,7 @@ using Coneic.Api.Data;
 using Coneic.Api.Models;
 using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Coneic.Api.Controllers
 {
@@ -9,104 +10,159 @@ namespace Coneic.Api.Controllers
     [Route("api/[controller]")]
     public class PaymentBatchesController : ControllerBase
     {
-        private readonly JsonDataStore _store;
+        private readonly ApplicationDbContext _db;
         private readonly IEmailService _email;
 
-        public PaymentBatchesController(JsonDataStore store, IEmailService email)
+        private const string LoginUrl = "https://coneic2026.com.ar/login";
+
+        public PaymentBatchesController(ApplicationDbContext db, IEmailService email)
         {
-            _store = store;
+            _db = db;
             _email = email;
         }
 
-        /// <summary>Get all batches for the logged-in delegate (by email query param).</summary>
         [HttpGet("delegate")]
         public ActionResult<IEnumerable<PaymentBatch>> GetByDelegate([FromQuery] string email)
         {
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest(new { message = "Se requiere el email del delegado." });
 
-            return Ok(_store.GetPaymentBatchesByDelegate(email));
+            var batches = _db.PaymentBatches.AsEnumerable()
+                .Where(b => b.DelegateEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(b => b.CreatedAt)
+                .ToList();
+
+            return Ok(batches);
         }
 
-        /// <summary>Get all batches — admin use.</summary>
         [HttpGet]
         public ActionResult<IEnumerable<PaymentBatch>> GetAll()
-            => Ok(_store.GetAllPaymentBatches());
+        {
+            var batches = _db.PaymentBatches
+                .OrderByDescending(b => b.CreatedAt)
+                .ToList();
+            return Ok(batches);
+        }
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var batch = _store.GetPaymentBatchById(id);
+            var batch = _db.PaymentBatches.Find(id);
             if (batch == null) return NotFound();
             return Ok(batch);
         }
 
-        private const string LoginUrl = "https://coneic2026.com.ar/login";
-
-        private static string GeneratePassword()
-        {
-            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-            return new string(Enumerable.Range(0, 10).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
-        }
-
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] PaymentBatch batch)
+        public IActionResult Create([FromBody] PaymentBatch batch)
         {
             if (string.IsNullOrWhiteSpace(batch.DelegateEmail))
                 return BadRequest(new { message = "DelegateEmail es requerido." });
 
-            var created = _store.AddPaymentBatch(batch);
+            batch.CreatedAt = DateTime.Now;
+            _db.PaymentBatches.Add(batch);
+            _db.SaveChanges();
 
-            // Procesar cada asignación: actualizar paymentCondition y enviar emails
-            foreach (var assignment in created.Assignments)
+            foreach (var assignment in batch.Assignments)
             {
-                var reg = _store.GetRegistrationById(assignment.RegistrationId);
+                var reg = _db.Registrations.Find(assignment.RegistrationId);
                 if (reg == null) continue;
-
-                // Actualizar paymentCondition en el registro (preserva isEnabled actual)
-                _store.UpdatePayment(assignment.RegistrationId, reg.IsEnabled, assignment.PaymentType);
-
-                switch (assignment.PaymentType)
-                {
-                    case "Pagó Completo":
-                    case "Pagó 2° Cuota":
-                    {
-                        // Crear usuario en portal y enviar email de confirmación
-                        var tempPassword = GeneratePassword();
-                        _store.CreateUserFromRegistration(reg.Email, tempPassword);
-                        await _email.SendRegistrationConfirmedAsync(
-                            toEmail:       reg.Email,
-                            toName:        $"{reg.Name} {reg.Lastname}",
-                            paymentDetail: assignment.PaymentType,
-                            tempPassword:  tempPassword,
-                            loginUrl:      LoginUrl);
-                        break;
-                    }
-                    case "Pagó 1° Cuota":
-                        await _email.SendFirstPaymentReceivedAsync(
-                            toEmail: reg.Email,
-                            toName:  $"{reg.Name} {reg.Lastname}",
-                            dueDate: "a confirmar con tu delegado/a");
-                        break;
-                }
+                reg.PaymentCondition = assignment.PaymentType;
+                _db.SaveChanges();
             }
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            return CreatedAtAction(nameof(GetById), new { id = batch.Id }, batch);
         }
 
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] PaymentBatch updated)
         {
-            var result = _store.UpdatePaymentBatch(id, updated);
-            if (result == null) return NotFound();
-            return Ok(result);
+            var existing = _db.PaymentBatches.Find(id);
+            if (existing == null) return NotFound();
+
+            existing.ReceiptUrl = updated.ReceiptUrl;
+            existing.Description = updated.Description;
+            existing.Assignments = updated.Assignments;
+            _db.SaveChanges();
+
+            return Ok(existing);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            if (!_store.DeletePaymentBatch(id)) return NotFound();
+            var batch = _db.PaymentBatches.Find(id);
+            if (batch == null) return NotFound();
+            _db.PaymentBatches.Remove(batch);
+            _db.SaveChanges();
             return NoContent();
+        }
+
+        [HttpPost("{id}/validate")]
+        public async Task<IActionResult> Validate(int id)
+        {
+            var batch = _db.PaymentBatches.Find(id);
+            if (batch == null) return NotFound();
+            if (batch.IsValidated)
+                return BadRequest(new { message = "Este comprobante ya fue validado." });
+
+            batch.IsValidated = true;
+            batch.ValidatedAt = DateTime.Now;
+            _db.SaveChanges();
+
+            foreach (var assignment in batch.Assignments)
+            {
+                var reg = _db.Registrations.Find(assignment.RegistrationId);
+                if (reg == null) continue;
+
+                var fullName = $"{reg.Name} {reg.Lastname}";
+
+                if (assignment.PaymentType == "Pagó 1° Cuota")
+                {
+                    await _email.SendFirstPaymentReceivedAsync(reg.Email, fullName, "a confirmar");
+                }
+                else if (assignment.PaymentType is "Pagó Completo" or "Pagó 2° Cuota")
+                {
+                    if (reg.Status != "Paid")
+                    {
+                        reg.Status = "Paid";
+                        var tempPassword = GeneratePassword();
+                        CreateUserFromRegistration(reg.Email, tempPassword);
+                        _db.SaveChanges();
+
+                        await _email.SendRegistrationConfirmedAsync(
+                            toEmail: reg.Email,
+                            toName: fullName,
+                            paymentDetail: assignment.PaymentType,
+                            tempPassword: tempPassword,
+                            loginUrl: LoginUrl);
+                    }
+                }
+            }
+
+            return Ok(batch);
+        }
+
+        private void CreateUserFromRegistration(string email, string password)
+        {
+            var exists = _db.Users.AsEnumerable()
+                .Any(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            if (exists) return;
+
+            var maxId = _db.Users.Any() ? _db.Users.Max(u => u.Id) : 0;
+            _db.Users.Add(new User
+            {
+                Id = maxId + 1,
+                Email = email,
+                Password = password,
+                Role = "assistant",
+                MustChangePassword = true,
+            });
+        }
+
+        private static string GeneratePassword()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+            return new string(Enumerable.Range(0, 10).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
         }
     }
 }

@@ -13,13 +13,18 @@ public class NullEmailService : IEmailService
 
     public Task SendRegistrationReceivedAsync(RegistrationEmailData data)
     {
-        _logger.LogInformation("[DEV EMAIL] RegistrationReceived → {Email} ({Name})", data.ToEmail, data.ToName);
+        _logger.LogInformation(
+            "[DEV EMAIL] RegistrationReceived → {Email} ({Name}) | Delegación: {Delegation}",
+            data.ToEmail, data.ToName, data.Delegation?.DelegationName ?? "—");
         return Task.CompletedTask;
     }
 
-    public Task SendRegistrationValidatedAsync(string toEmail, string toName)
+    public Task SendRegistrationValidatedAsync(
+        string toEmail, string toName, DelegationInfo? delegation, string paymentDeadline)
     {
-        _logger.LogInformation("[DEV EMAIL] RegistrationValidated → {Email} ({Name})", toEmail, toName);
+        _logger.LogInformation(
+            "[DEV EMAIL] RegistrationValidated → {Email} ({Name}) | Delegación: {Delegation} | Vence: {Deadline}",
+            toEmail, toName, delegation?.DelegationName ?? "—", paymentDeadline);
         return Task.CompletedTask;
     }
 

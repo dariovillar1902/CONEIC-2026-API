@@ -1,6 +1,7 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Coneic.Api.Controllers
 {
@@ -8,17 +9,21 @@ namespace Coneic.Api.Controllers
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
     {
-        private readonly JsonDataStore _store;
+        private readonly ApplicationDbContext _db;
 
-        public UsersController(JsonDataStore store)
+        public UsersController(ApplicationDbContext db)
         {
-            _store = store;
+            _db = db;
         }
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            var user = _store.FindUser(request.Email, request.Password);
+            var email = request.Email.ToLower();
+            var user = _db.Users.AsEnumerable()
+                .FirstOrDefault(u =>
+                    u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)
+                    && u.Password == request.Password);
 
             if (user == null)
                 return Unauthorized(new { message = "Credenciales inválidas" });
@@ -38,13 +43,17 @@ namespace Coneic.Api.Controllers
         [HttpPost("change-password")]
         public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            var changed = _store.ChangePassword(
-                request.Email,
-                request.CurrentPassword,
-                request.NewPassword);
+            var user = _db.Users.AsEnumerable()
+                .FirstOrDefault(u =>
+                    u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)
+                    && u.Password == request.CurrentPassword);
 
-            if (!changed)
+            if (user == null)
                 return Unauthorized(new { message = "Contraseña actual incorrecta." });
+
+            user.Password = request.NewPassword;
+            user.MustChangePassword = false;
+            _db.SaveChanges();
 
             return Ok(new { message = "Contraseña actualizada correctamente." });
         }

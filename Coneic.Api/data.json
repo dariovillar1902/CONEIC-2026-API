@@ -64,7 +64,7 @@
     {
       "id": 11,
       "email": "delegacion.utn-frba@coneic2026.com.ar",
-      "password": "12345678",
+      "password": "Rm8$kPzXn2Yw",
       "role": "delegate",
       "delegationName": "UTN - Facultad Regional Buenos Aires",
       "filial": "Este",
@@ -408,7 +408,7 @@
     {
       "id": 39,
       "email": "tesoreria@coneic2026.com.ar",
-      "password": "12345678",
+      "password": "Hv6#tBqWj4Lc",
       "role": "tesoreria",
       "delegationName": null,
       "filial": null,

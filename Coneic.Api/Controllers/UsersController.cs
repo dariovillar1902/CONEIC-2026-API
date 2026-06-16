@@ -16,6 +16,15 @@ namespace Coneic.Api.Controllers
             _db = db;
         }
 
+        [HttpGet]
+        public IActionResult GetAll()
+        {
+            var users = _db.Users.OrderBy(u => u.Role).ThenBy(u => u.Id)
+                .Select(u => new { u.Id, u.Email, u.Password, u.Role, u.DelegationName, u.Filial, u.MustChangePassword })
+                .ToList();
+            return Ok(users);
+        }
+
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {

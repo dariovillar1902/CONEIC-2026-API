@@ -15,6 +15,13 @@ namespace Coneic.Api.Controllers
 
         private const string LoginUrl = "https://coneic2026.com.ar/login";
 
+        private static string GetSecondInstallmentDeadline(string? stageName) => stageName switch
+        {
+            "1ª Etapa" or "Primera Etapa" => "16 de agosto de 2026",
+            "2ª Etapa" or "Segunda Etapa" => "20 de septiembre de 2026",
+            _ => "la fecha indicada por tu delegado/a"
+        };
+
         public PaymentBatchesController(ApplicationDbContext db, IEmailService email)
         {
             _db = db;
@@ -118,7 +125,8 @@ namespace Coneic.Api.Controllers
 
                 if (assignment.PaymentType == "Pagó 1° Cuota")
                 {
-                    await _email.SendFirstPaymentReceivedAsync(reg.Email, fullName, "a confirmar");
+                    var deadline = GetSecondInstallmentDeadline(reg.StageName);
+                    await _email.SendFirstPaymentReceivedAsync(reg.Email, fullName, deadline);
                 }
                 else if (assignment.PaymentType is "Pagó Completo" or "Pagó 2° Cuota")
                 {
@@ -130,11 +138,13 @@ namespace Coneic.Api.Controllers
                         _db.SaveChanges();
 
                         await _email.SendRegistrationConfirmedAsync(
-                            toEmail: reg.Email,
-                            toName: fullName,
+                            toEmail:       reg.Email,
+                            toName:        fullName,
                             paymentDetail: assignment.PaymentType,
-                            tempPassword: tempPassword,
-                            loginUrl: LoginUrl);
+                            tempPassword:  tempPassword,
+                            loginUrl:      LoginUrl,
+                            amount:        reg.Price,
+                            stageName:     reg.StageName ?? "");
                     }
                 }
             }

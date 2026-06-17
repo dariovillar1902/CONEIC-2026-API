@@ -29,11 +29,12 @@ public class NullEmailService : IEmailService
     }
 
     public Task SendRegistrationConfirmedAsync(
-        string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl)
+        string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl,
+        decimal amount = 0, string stageName = "")
     {
         _logger.LogInformation(
-            "[DEV EMAIL] RegistrationConfirmed → {Email} ({Name}) | Password: {Password}",
-            toEmail, toName, tempPassword);
+            "[DEV EMAIL] RegistrationConfirmed → {Email} ({Name}) | Password: {Password} | Stage: {Stage} | Amount: {Amount}",
+            toEmail, toName, tempPassword, stageName, amount);
         return Task.CompletedTask;
     }
 

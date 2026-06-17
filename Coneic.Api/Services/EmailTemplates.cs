@@ -266,13 +266,13 @@ internal static class EmailTemplates
               Recibimos correctamente la información enviada a través del formulario de inscripción.
             </p>
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
-              El siguiente paso será esperar a que tu delegado/a habilite tu inscripción para poder
+              El siguiente paso será esperar a que tu inscripción sea habilitada para poder
               continuar con el proceso. Esta validación se realizará durante el transcurso de la
-              próxima semana.
+              próxima semana, agradecemos tu paciencia.
             </p>
             <p style="margin:0 0 8px;font-size:15px;line-height:1.75;color:{ColorText};">
-              Ante cualquier duda o consulta, podés comunicarte directamente con tu delegación
-              por WhatsApp.
+              Ante cualquier duda o consulta, podés comunicarte con tu delegado/a para recibir
+              más información y resolver cualquier inquietud.
             </p>
             {DelegationContactBox(delegation)}
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
@@ -308,12 +308,14 @@ internal static class EmailTemplates
               <strong>¡Tu inscripción al CONEIC XVIII fue habilitada correctamente!</strong>
             </p>
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
-              El próximo paso es comunicarte con tu delegación para coordinar el pago y continuar
+              El próximo paso es comunicarte con tu delegado/a para coordinar el pago y continuar
               con el proceso de inscripción.
             </p>
             <p style="margin:0 0 8px;font-size:15px;line-height:1.75;color:{ColorText};">
-              En caso de no comunicarte dentro del plazo indicado, tu lugar podrá ser liberado
-              y reasignado a otra persona en lista de espera.
+              Recordá que tenés tiempo hasta el día <strong>{paymentDeadline}</strong> para realizar
+              el contacto, coordinar el pago y enviar el comprobante correspondiente. En caso de no
+              comunicarte dentro de ese plazo, tu lugar podrá ser liberado y reasignado a otra
+              persona en lista de espera.
             </p>
             {DelegationContactBox(delegation)}
             {RedBox($"""
@@ -339,13 +341,17 @@ internal static class EmailTemplates
     // 3. Inscripción confirmada (pago completo o 2da cuota — se crea el usuario)
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) RegistrationConfirmed(
-        string toName, string toEmail, string paymentDetail, string tempPassword, string loginUrl)
+        string toName, string toEmail, string paymentDetail, string tempPassword, string loginUrl,
+        decimal amount = 0, string stageName = "")
     {
         var subject = "Inscripción confirmada – CONEIC XVIII";
         var banner  = StatusBanner("#E8F4EC", "#1a6b35", "🎉 &nbsp;Inscripción confirmada");
 
-        var isSecondInstallment = paymentDetail == "Pagó 2° Cuota";
-        var paymentDesc = isSecondInstallment ? "la segunda cuota" : "el pago completo";
+        var isSecondInstallment = paymentDetail is "Pagó 2° Cuota";
+        var cuotaDesc  = isSecondInstallment ? "la segunda cuota" : "el pago completo";
+        var amountPart = amount > 0 ? $"de ${amount:N0} " : "";
+        var stagePart  = !string.IsNullOrEmpty(stageName) ? $" de la {stageName}" : "";
+        var paymentDesc = $"{amountPart}correspondiente a {cuotaDesc}{stagePart}";
 
         var body = $"""
             <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
@@ -355,18 +361,17 @@ internal static class EmailTemplates
               <strong>¡Tu inscripción al CONEIC XVIII quedó confirmada correctamente!</strong>
             </p>
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
-              Recibimos y registramos tu pago correspondiente a <strong>{paymentDesc}</strong>
-              en nuestro sistema, por lo que ya formás parte oficialmente de esta nueva edición
-              del congreso.
+              Recibimos y registramos tu pago {paymentDesc} en nuestro sistema, por lo que
+              ya formás parte oficialmente de esta nueva edición del congreso.
             </p>
             {CredentialsBox(toEmail, tempPassword)}
             <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
               Te invitamos a seguir todas las novedades, anuncios e información importante a través
-              de nuestra <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web</a>
-              y redes sociales oficiales
+              de nuestras redes sociales
               (<a href="{InstagramUrl}" style="color:{BgHeader};">Instagram</a>
               &nbsp;/&nbsp;
-              <a href="{LinkedInUrl}" style="color:{BgHeader};">LinkedIn</a>).
+              <a href="{LinkedInUrl}" style="color:{BgHeader};">LinkedIn</a>)
+              y <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web oficial</a>.
             </p>
             <p style="margin:0;font-size:15px;line-height:1.75;color:{BgHeader};font-weight:bold;">
               ¡Muchas gracias por sumarte al CONEIC XVIII!
@@ -418,9 +423,12 @@ internal static class EmailTemplates
               Ante cualquier duda, podés comunicarte con tu delegación por WhatsApp.
             </p>
             <p style="margin:0;font-size:15px;line-height:1.75;color:{ColorText};">
-              Te invitamos a seguir todas las novedades a través de nuestra
-              <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web</a>
-              y redes sociales oficiales.
+              Te invitamos a seguir todas las novedades, anuncios e información importante a través
+              de nuestras redes sociales
+              (<a href="{InstagramUrl}" style="color:{BgHeader};">Instagram</a>
+              &nbsp;/&nbsp;
+              <a href="{LinkedInUrl}" style="color:{BgHeader};">LinkedIn</a>)
+              y <a href="{WebUrl}" style="color:{BgHeader};font-weight:bold;">página web oficial</a>.
             </p>
             """;
 

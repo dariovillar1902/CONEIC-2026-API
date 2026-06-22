@@ -363,9 +363,9 @@ internal static class DelegateDirectory
 
         // UTN Mendoza no tiene delegados propios → cubre Julieta Listello (isRegionalFallback de Oeste)
         ["utn - facultad regional mendoza"] = D("UTN - Facultad Regional Mendoza",
-            ("Julieta Anahí Listello", "3573430566")),
+            ("Marisa Ester Atencio", "2617146321")),
         ["utn mendoza"] = D("UTN - Facultad Regional Mendoza",
-            ("Julieta Anahí Listello", "3573430566")),
+            ("Marisa Ester Atencio", "2617146321")),
 
         ["universidad católica de córdoba"] = D("Universidad Católica de Córdoba",
             ("Fernando Cabrera", "2657637553")),

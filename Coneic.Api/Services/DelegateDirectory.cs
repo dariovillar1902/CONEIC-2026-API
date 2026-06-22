@@ -50,7 +50,7 @@ internal static class DelegateDirectory
             "catamarca" or "chaco" or "corrientes" or "formosa" or "jujuy" or
             "misiones" or "salta" or "santiago del estero" or "tucumán" or "tucuman" =>
                 D("Vocal Región Norte",
-                    ("Joaquín Kossoy", "")),
+                    ("Joaquín Kossoy", "3624188826")),
 
             "córdoba" or "cordoba" or "la rioja" or "mendoza" or "san juan" or "san luis" =>
                 D("Vocal Región Oeste",
@@ -59,7 +59,7 @@ internal static class DelegateDirectory
             "la pampa" or "neuquén" or "neuquen" or "chubut" or
             "río negro" or "rio negro" or "santa cruz" or "tierra del fuego" =>
                 D("Vocal Región Sur",
-                    ("Timoteo Lang", "")),
+                    ("Timoteo Lang", "2974387130")),
 
             _ => null
         };

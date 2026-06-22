@@ -38,31 +38,28 @@ internal static class DelegateDirectory
         province.Trim().ToLowerInvariant() switch
         {
             "santa fe" =>
-                D("Región Centro",
-                    ("Francisco Coppari", "3413208022"),
-                    ("Luana Plese",       "3406421101")),
+                D("Vocal Región Centro",
+                    ("Ana Breit", "3462611376")),
 
-            "entre ríos" or "entre rios" or "buenos aires" =>
-                D("Región Este",
+            "entre ríos" or "entre rios" or "buenos aires" or
+            "ciudad autónoma de buenos aires" or "ciudad autonoma de buenos aires" =>
+                D("Vocal Región Este",
                     ("Santiago Meneses",  "3462611376"),
                     ("Agostina Ingratta", "2974019956")),
 
             "catamarca" or "chaco" or "corrientes" or "formosa" or "jujuy" or
-            "misiones" or "salta" or "santiago del estero" or "tucumán" or "tucuman" or
-            "ciudad autónoma de buenos aires" or "ciudad autonoma de buenos aires" =>
-                D("Región Norte",
-                    ("Cristian Gabriel Ledesma", "3794707691"),
-                    ("Celeste Milena Sabaj",      "3704925065")),
+            "misiones" or "salta" or "santiago del estero" or "tucumán" or "tucuman" =>
+                D("Vocal Región Norte",
+                    ("Joaquín Kossoy", "")),
 
             "córdoba" or "cordoba" or "la rioja" or "mendoza" or "san juan" or "san luis" =>
-                D("Región Oeste",
-                    ("Julieta Anahí Listello", "3573430566")),
+                D("Vocal Región Oeste",
+                    ("Fernando Cabrera", "2657637553")),
 
             "la pampa" or "neuquén" or "neuquen" or "chubut" or
             "río negro" or "rio negro" or "santa cruz" or "tierra del fuego" =>
-                D("Región Sur",
-                    ("Jerónimo Ferro Perea",      "2974293820"),
-                    ("Sergio Alejandro Gallardo", "2974358699")),
+                D("Vocal Región Sur",
+                    ("Timoteo Lang", "")),
 
             _ => null
         };

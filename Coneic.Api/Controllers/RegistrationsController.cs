@@ -338,10 +338,14 @@ namespace Coneic.Api.Controllers
         // ── Delete ──────────────────────────────────────────────────────────────
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             var reg = _db.Registrations.Find(id);
             if (reg == null) return NotFound();
+
+            if (!string.IsNullOrWhiteSpace(reg.CertificateFileName))
+                await _blob.DeleteByUrlAsync(reg.CertificateFileName);
+
             _db.Registrations.Remove(reg);
             _db.SaveChanges();
             return NoContent();

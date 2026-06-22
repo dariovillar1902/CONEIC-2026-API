@@ -67,6 +67,20 @@ public class BlobStorageService : IBlobStorageService
         return blobClient.Uri.ToString();
     }
 
+    public async Task DeleteByUrlAsync(string blobUrl)
+    {
+        if (string.IsNullOrWhiteSpace(blobUrl)) return;
+        var uri = new Uri(blobUrl);
+        // path = /{container}/{blobName...}
+        var segments = uri.AbsolutePath.TrimStart('/').Split('/', 2);
+        if (segments.Length < 2) return;
+        var container = segments[0];
+        var blobName  = segments[1];
+        var blobClient = _client.GetBlobContainerClient(container).GetBlobClient(blobName);
+        await blobClient.DeleteIfExistsAsync();
+        _logger.LogInformation("Blob eliminado: {Container}/{BlobName}", container, blobName);
+    }
+
     /// <summary>Convierte texto a slug ASCII para nombres de archivo seguros.</summary>
     private static string Slugify(string input)
     {

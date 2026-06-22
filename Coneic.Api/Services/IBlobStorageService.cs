@@ -27,4 +27,7 @@ public interface IBlobStorageService
 
     /// <summary>Upload genérico (legado) — devuelve la URL pública del blob.</summary>
     Task<string> UploadGenericAsync(Stream fileStream, string contentType, string extension);
+
+    /// <summary>Elimina un blob por su URL pública. No falla si no existe.</summary>
+    Task DeleteByUrlAsync(string blobUrl);
 }

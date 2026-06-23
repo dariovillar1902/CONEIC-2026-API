@@ -228,11 +228,11 @@ internal static class DelegateDirectory
         // ── REGIÓN NORTE ─────────────────────────────────────────────────────
 
         ["universidad nacional del nordeste"] = D("Universidad Nacional del Nordeste",
-            ("Cristian Gabriel Ledesma", "3794707691"),
-            ("Celeste Milena Sabaj",     "3704925065")),
+            ("Tadeo Gabriel Fernández", "3704605585"),
+            ("Celeste Milena Sabaj",    "3704925065")),
         ["unne"] = D("Universidad Nacional del Nordeste",
-            ("Cristian Gabriel Ledesma", "3794707691"),
-            ("Celeste Milena Sabaj",     "3704925065")),
+            ("Tadeo Gabriel Fernández", "3704605585"),
+            ("Celeste Milena Sabaj",    "3704925065")),
 
         ["universidad nacional de tucumán"] = D("Universidad Nacional de Tucumán",
             ("Alvaro Ramiro Brodersen", "3815294542"),

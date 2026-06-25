@@ -216,8 +216,9 @@ namespace Coneic.Api.Controllers
             reg.PaymentMethod         = updated.PaymentMethod;
             reg.AmountPaid            = updated.AmountPaid;
             reg.AmountPending         = updated.AmountPending;
-            reg.Observations          = updated.Observations;
-            reg.DietaryRestrictions   = updated.DietaryRestrictions;
+            reg.Observations            = updated.Observations;
+            reg.DietaryRestrictions     = updated.DietaryRestrictions;
+            reg.InterestedInMaccaferri  = updated.InterestedInMaccaferri;
             _db.SaveChanges();
             return Ok(reg);
         }

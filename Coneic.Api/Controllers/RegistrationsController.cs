@@ -30,8 +30,8 @@ namespace Coneic.Api.Controllers
 
         private static string GetPaymentDeadline(string? stageName) => stageName switch
         {
-            "1ª Etapa" or "Primera Etapa" => "8 de julio de 2026",
-            "2ª Etapa" or "Segunda Etapa" => "12 de agosto de 2026",
+            "1ª Etapa" or "Primera Etapa" => "5 de julio de 2026",
+            "2ª Etapa" or "Segunda Etapa" => "9 de agosto de 2026",
             "3ª Etapa" or "Tercera Etapa" => "16 de septiembre de 2026",
             _ => "la fecha indicada por tu delegado/a"
         };
@@ -135,6 +135,8 @@ namespace Coneic.Api.Controllers
                     toName:        $"{reg.Name} {reg.Lastname}",
                     paymentDetail: reg.PaymentCondition ?? "Pago completo",
                     tempPassword:  generatedPassword,
+                    amount:        reg.Price,
+                    stageName:     reg.StageName ?? "",
                     loginUrl:      LoginUrl);
 
                 return Ok(new { registration = reg, generatedPassword });
@@ -214,8 +216,9 @@ namespace Coneic.Api.Controllers
             reg.PaymentMethod         = updated.PaymentMethod;
             reg.AmountPaid            = updated.AmountPaid;
             reg.AmountPending         = updated.AmountPending;
-            reg.Observations          = updated.Observations;
-            reg.DietaryRestrictions   = updated.DietaryRestrictions;
+            reg.Observations            = updated.Observations;
+            reg.DietaryRestrictions     = updated.DietaryRestrictions;
+            reg.InterestedInMaccaferri  = updated.InterestedInMaccaferri;
             _db.SaveChanges();
             return Ok(reg);
         }
@@ -250,6 +253,8 @@ namespace Coneic.Api.Controllers
                 toName:        $"{reg.Name} {reg.Lastname}",
                 paymentDetail: reg.PaymentCondition ?? "Pago completo",
                 tempPassword:  tempPassword,
+                amount:        reg.Price,
+                stageName:     reg.StageName ?? "",
                 loginUrl:      LoginUrl);
 
             return Ok(new { registration = reg, generatedPassword = tempPassword });
@@ -334,10 +339,14 @@ namespace Coneic.Api.Controllers
         // ── Delete ──────────────────────────────────────────────────────────────
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             var reg = _db.Registrations.Find(id);
             if (reg == null) return NotFound();
+
+            if (!string.IsNullOrWhiteSpace(reg.CertificateFileName))
+                await _blob.DeleteByUrlAsync(reg.CertificateFileName);
+
             _db.Registrations.Remove(reg);
             _db.SaveChanges();
             return NoContent();

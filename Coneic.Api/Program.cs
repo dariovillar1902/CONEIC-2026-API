@@ -7,6 +7,9 @@ using Coneic.Api.Services;
 // Derive SQLite path from DATA_FILE_PATH so the DB lives beside data.json on persistent storage
 var dataFilePath = Environment.GetEnvironmentVariable("DATA_FILE_PATH");
 var sqlitePath = Environment.GetEnvironmentVariable("SQLITE_DB_PATH");
+// Ignore SQLITE_DB_PATH if it's a Windows-style path (not absolute on Linux)
+if (!string.IsNullOrWhiteSpace(sqlitePath) && !Path.IsPathRooted(sqlitePath))
+    sqlitePath = null;
 if (string.IsNullOrWhiteSpace(sqlitePath) && !string.IsNullOrWhiteSpace(dataFilePath))
     sqlitePath = Path.Combine(Path.GetDirectoryName(dataFilePath)!, "coneic.db");
 

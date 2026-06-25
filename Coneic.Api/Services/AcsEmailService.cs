@@ -39,10 +39,11 @@ public class AcsEmailService : IEmailService
     }
 
     public async Task SendRegistrationConfirmedAsync(
-        string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl)
+        string toEmail, string toName, string paymentDetail, string tempPassword, string loginUrl,
+        decimal amount = 0, string stageName = "")
     {
         var (subject, html) = EmailTemplates.RegistrationConfirmed(
-            toName, toEmail, paymentDetail, tempPassword, loginUrl);
+            toName, toEmail, paymentDetail, tempPassword, loginUrl, amount, stageName);
         await SendAsync(toEmail, toName, subject, html);
     }
 

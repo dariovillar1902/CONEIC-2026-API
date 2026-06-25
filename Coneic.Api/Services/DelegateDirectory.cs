@@ -21,9 +21,48 @@ internal static class DelegateDirectory
     public static DelegationInfo? Lookup(string? faculty)
     {
         if (string.IsNullOrWhiteSpace(faculty)) return null;
-        var key = faculty.Trim().ToLowerInvariant();
+        var trimmed = faculty.Trim();
+        var key = trimmed.ToLowerInvariant();
+
+        // Handle "Otra (Province)" pattern — return the regional fallback
+        if (key.StartsWith("otra (") && key.EndsWith(")"))
+        {
+            var province = trimmed[6..^1];
+            return LookupByProvince(province);
+        }
+
         return Entries.TryGetValue(key, out var info) ? info : null;
     }
+
+    private static DelegationInfo? LookupByProvince(string province) =>
+        province.Trim().ToLowerInvariant() switch
+        {
+            "santa fe" =>
+                D("Vocal Región Centro",
+                    ("Ana Breit", "3462611376")),
+
+            "entre ríos" or "entre rios" or "buenos aires" or
+            "ciudad autónoma de buenos aires" or "ciudad autonoma de buenos aires" =>
+                D("Vocal Región Este",
+                    ("Santiago Meneses",  "3462611376"),
+                    ("Agostina Ingratta", "2974019956")),
+
+            "catamarca" or "chaco" or "corrientes" or "formosa" or "jujuy" or
+            "misiones" or "salta" or "santiago del estero" or "tucumán" or "tucuman" =>
+                D("Vocal Región Norte",
+                    ("Joaquín Kossoy", "3624188826")),
+
+            "córdoba" or "cordoba" or "la rioja" or "mendoza" or "san juan" or "san luis" =>
+                D("Vocal Región Oeste",
+                    ("Fernando Cabrera", "2657637553")),
+
+            "la pampa" or "neuquén" or "neuquen" or "chubut" or
+            "río negro" or "rio negro" or "santa cruz" or "tierra del fuego" =>
+                D("Vocal Región Sur",
+                    ("Timoteo Lang", "2974387130")),
+
+            _ => null
+        };
 
     // ── Helpers de construcción ──────────────────────────────────────────────
     private static DelegationInfo D(string name, params (string Name, string Phone)[] contacts) =>
@@ -189,11 +228,11 @@ internal static class DelegateDirectory
         // ── REGIÓN NORTE ─────────────────────────────────────────────────────
 
         ["universidad nacional del nordeste"] = D("Universidad Nacional del Nordeste",
-            ("Cristian Gabriel Ledesma", "3794707691"),
-            ("Celeste Milena Sabaj",     "3704925065")),
+            ("Tadeo Gabriel Fernández", "3704605585"),
+            ("Celeste Milena Sabaj",    "3704925065")),
         ["unne"] = D("Universidad Nacional del Nordeste",
-            ("Cristian Gabriel Ledesma", "3794707691"),
-            ("Celeste Milena Sabaj",     "3704925065")),
+            ("Tadeo Gabriel Fernández", "3704605585"),
+            ("Celeste Milena Sabaj",    "3704925065")),
 
         ["universidad nacional de tucumán"] = D("Universidad Nacional de Tucumán",
             ("Alvaro Ramiro Brodersen", "3815294542"),
@@ -324,9 +363,9 @@ internal static class DelegateDirectory
 
         // UTN Mendoza no tiene delegados propios → cubre Julieta Listello (isRegionalFallback de Oeste)
         ["utn - facultad regional mendoza"] = D("UTN - Facultad Regional Mendoza",
-            ("Julieta Anahí Listello", "3573430566")),
+            ("Marisa Ester Atencio", "2617146321")),
         ["utn mendoza"] = D("UTN - Facultad Regional Mendoza",
-            ("Julieta Anahí Listello", "3573430566")),
+            ("Marisa Ester Atencio", "2617146321")),
 
         ["universidad católica de córdoba"] = D("Universidad Católica de Córdoba",
             ("Fernando Cabrera", "2657637553")),

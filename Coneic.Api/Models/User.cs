@@ -27,6 +27,9 @@ namespace Coneic.Api.Models
 
         /// <summary>True when the account was auto-created and the user must set a new password.</summary>
         public bool MustChangePassword { get; set; } = false;
+
+        /// <summary>Maximum number of registrations this delegate can enable. 0 = no limit set.</summary>
+        public int Quota { get; set; } = 0;
     }
 
     public class LoginRequest

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ClosedXML.Excel;
 using Coneic.Api.Data;
 using Coneic.Api.Models;
@@ -150,6 +151,20 @@ namespace Coneic.Api.Controllers
         {
             var reg = _db.Registrations.Find(id);
             if (reg == null) return NotFound();
+
+            // Quota check: only when enabling a previously-disabled registration
+            if (dto.IsEnabled && !reg.IsEnabled && !string.IsNullOrEmpty(dto.DelegateEmail))
+            {
+                var delegateUser = _db.Users.AsEnumerable()
+                    .FirstOrDefault(u => u.Email.Equals(dto.DelegateEmail, StringComparison.OrdinalIgnoreCase));
+                if (delegateUser != null && delegateUser.Quota > 0)
+                {
+                    var faculties = delegateUser.ManagedFaculties;
+                    var enabledCount = _db.Registrations.Count(r => r.IsEnabled && faculties.Contains(r.Faculty));
+                    if (enabledCount >= delegateUser.Quota)
+                        return BadRequest(new { error = "Cupo agotado", quota = delegateUser.Quota, enabled = enabledCount });
+                }
+            }
 
             var wasEnabled = reg.IsEnabled;
             reg.IsEnabled = dto.IsEnabled;
@@ -397,6 +412,18 @@ namespace Coneic.Api.Controllers
                 $"inscripciones_delegado.xlsx");
         }
 
+        [HttpGet("delegate/quota")]
+        public IActionResult GetDelegateQuota([FromQuery] string email)
+        {
+            var delegateUser = _db.Users.AsEnumerable()
+                .FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            if (delegateUser == null) return NotFound();
+
+            var faculties = delegateUser.ManagedFaculties;
+            var enabledCount = _db.Registrations.Count(r => r.IsEnabled && faculties.Contains(r.Faculty));
+            return Ok(new { quota = delegateUser.Quota, enabledCount });
+        }
+
         private static byte[] BuildExcel(IEnumerable<Registration> registrations)
         {
             using var workbook = new XLWorkbook();
@@ -407,7 +434,7 @@ namespace Coneic.Api.Controllers
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
                 "Grupo Sanguíneo", "Afecciones", "Restricciones Alimentarias", "Contacto Emergencia", "Tel. Emergencia",
                 "Etapa", "Precio", "Habilitado", "Condición de Pago",
-                "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción"
+                "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción", "Desafío Barreras"
             };
 
             for (int i = 0; i < headers.Length; i++)
@@ -442,6 +469,7 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 18).Value = (double)r.AmountPending;
                 ws.Cell(row, 19).Value = r.Observations ?? "";
                 ws.Cell(row, 20).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
+                ws.Cell(row, 21).Value = r.InterestedInMaccaferri ? "Sí" : "No";
                 row++;
             }
 
@@ -457,6 +485,7 @@ namespace Coneic.Api.Controllers
     {
         public bool IsEnabled { get; set; }
         public string? PaymentCondition { get; set; }
+        public string? DelegateEmail { get; set; }
     }
 
     public class UpdateAmountsDto

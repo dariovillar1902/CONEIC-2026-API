@@ -37,6 +37,7 @@ namespace Coneic.Api.Controllers
                 filial = user.Filial,
                 managedFaculties = user.ManagedFaculties,
                 mustChangePassword = user.MustChangePassword,
+                quota = user.Quota,
             });
         }
 

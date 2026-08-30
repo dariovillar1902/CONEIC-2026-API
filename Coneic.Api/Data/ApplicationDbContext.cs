@@ -15,12 +15,16 @@ namespace Coneic.Api.Data
         public DbSet<Speaker> Speakers { get; set; }
         public DbSet<Activity> Activities { get; set; }
         public DbSet<Photo> Photos { get; set; }
+        public DbSet<ManualComment> ManualComments { get; set; }
+        public DbSet<AppSetting> AppSettings { get; set; }
 
         private static readonly JsonSerializerOptions _json = new();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AppSetting>().HasKey(s => s.Key);
 
             modelBuilder.Entity<User>()
                 .Property(u => u.ManagedFaculties)

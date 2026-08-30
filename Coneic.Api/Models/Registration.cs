@@ -62,6 +62,17 @@ namespace Coneic.Api.Models
 
         // Free-text notes visible to delegates (replaces the old per-registration comprobante link)
         public string? Observations { get; set; }
+
+        // International students (registration-international page)
+        public bool IsInternational { get; set; }
+        public string? Country { get; set; }
+        public string? City { get; set; }
+        public string? University { get; set; }
+        public string? AttendanceConfidence { get; set; }
+
+        // On-site check-in (QR / manual code scanner)
+        public bool CheckedIn { get; set; } = false;
+        public DateTime? CheckedInAt { get; set; }
     }
     
     public enum RegistrationStatus 

@@ -17,6 +17,8 @@ namespace Coneic.Api.Data
         public DbSet<Photo> Photos { get; set; }
         public DbSet<ManualComment> ManualComments { get; set; }
         public DbSet<AppSetting> AppSettings { get; set; }
+        public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
 
         private static readonly JsonSerializerOptions _json = new();
 
@@ -25,6 +27,10 @@ namespace Coneic.Api.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<AppSetting>().HasKey(s => s.Key);
+
+            modelBuilder.Entity<AttendanceRecord>()
+                .HasIndex(r => new { r.RegistrationId, r.SessionId })
+                .IsUnique();
 
             modelBuilder.Entity<User>()
                 .Property(u => u.ManagedFaculties)

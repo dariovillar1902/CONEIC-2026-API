@@ -69,10 +69,6 @@ namespace Coneic.Api.Models
         public string? City { get; set; }
         public string? University { get; set; }
         public string? AttendanceConfidence { get; set; }
-
-        // On-site check-in (QR / manual code scanner)
-        public bool CheckedIn { get; set; } = false;
-        public DateTime? CheckedInAt { get; set; }
     }
     
     public enum RegistrationStatus 

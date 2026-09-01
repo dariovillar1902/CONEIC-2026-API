@@ -15,4 +15,13 @@ public class SelectableActivity
 
     /// <summary>Placeholder until organizers confirm real capacity per activity.</summary>
     public int Capacity { get; set; }
+
+    /// <summary>
+    /// Denormalized running count of active selections, updated via a single
+    /// atomic UPDATE ... WHERE TakenCount &lt; Capacity (see
+    /// ActivitySelectionController). Avoids a separate COUNT query and — more
+    /// importantly — avoids the check-then-insert race that a COUNT-based
+    /// check would have under concurrent requests.
+    /// </summary>
+    public int TakenCount { get; set; } = 0;
 }

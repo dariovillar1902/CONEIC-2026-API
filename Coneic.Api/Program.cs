@@ -43,7 +43,8 @@ else
 
 // EF Core + SQLite for all entities (Users, Registrations, PaymentBatches, Speakers, Activities, Photos)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .AddInterceptors(new SqlitePragmaInterceptor()));
 
 builder.Services.AddCors(options =>
 {

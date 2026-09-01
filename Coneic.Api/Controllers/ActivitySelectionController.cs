@@ -16,7 +16,7 @@ public class ActivitySelectionController : ControllerBase
         _db = db;
     }
 
-    // ── Listado de bloques + opciones + cupos + tu elección actual ─────────────
+    // ── Listado de bloques + opciones + cupos + tu elección actual (draft o confirmada) ──
 
     [HttpGet("blocks")]
     public async Task<IActionResult> GetBlocks([FromQuery] string email)
@@ -30,11 +30,6 @@ public class ActivitySelectionController : ControllerBase
 
         var blocks = await _db.ActivityBlocks.OrderBy(b => b.Id).ToListAsync();
         var activities = await _db.SelectableActivities.OrderBy(a => a.Code).ToListAsync();
-
-        var takenCounts = await _db.ActivitySelections
-            .GroupBy(s => s.ActivityId)
-            .Select(g => new { ActivityId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.ActivityId, x => x.Count);
 
         var result = blocks.Select(b => new
         {
@@ -52,14 +47,44 @@ public class ActivitySelectionController : ControllerBase
                 a.Speaker,
                 a.Description,
                 a.Capacity,
-                Taken = takenCounts.GetValueOrDefault(a.Id, 0),
+                Taken = a.TakenCount,
             }),
         });
 
         return Ok(result);
     }
 
-    // ── Elegir / cambiar de opción dentro de un bloque ──────────────────────────
+    // ── Tu estado general: ¿ya confirmaste definitivamente? ──────────────────
+
+    [HttpGet("status")]
+    public async Task<IActionResult> Status([FromQuery] string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { message = "Falta el email." });
+
+        var mine = await (
+            from s in _db.ActivitySelections
+            join a in _db.SelectableActivities on s.ActivityId equals a.Id
+            where s.UserEmail.ToLower() == email.ToLower()
+            select new
+            {
+                s.BlockId,
+                s.IsConfirmed,
+                s.ConfirmedAt,
+                ActivityId = a.Id,
+                ActivityCode = a.Code,
+                ActivityTitle = a.Title,
+            }).ToListAsync();
+
+        return Ok(new
+        {
+            isConfirmed = mine.Any(m => m.IsConfirmed),
+            confirmedAt = mine.Where(m => m.ConfirmedAt.HasValue).Select(m => m.ConfirmedAt).FirstOrDefault(),
+            selections = mine,
+        });
+    }
+
+    // ── Elegir / cambiar de opción dentro de un bloque (draft, reversible) ──────
 
     public record SelectRequest(string Email, int ActivityId);
 
@@ -73,21 +98,39 @@ public class ActivitySelectionController : ControllerBase
         if (activity == null)
             return NotFound(new { message = "La actividad indicada no existe." });
 
+        var alreadyConfirmed = await _db.ActivitySelections
+            .AnyAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.IsConfirmed);
+        if (alreadyConfirmed)
+            return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
+
         var existing = await _db.ActivitySelections
             .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == activity.BlockId);
 
-        // Si ya tenías elegida esta misma actividad, no hay nada que hacer.
         if (existing != null && existing.ActivityId == activity.Id)
-            return Ok(new { message = "Ya tenías esta actividad seleccionada." });
+            return Ok(new { message = "Ya tenías esta actividad seleccionada.", activityId = activity.Id, blockId = activity.BlockId });
 
-        // Chequeo de cupo (no cuenta tu propio cupo anterior si estás cambiando de opción).
-        var taken = await _db.ActivitySelections.CountAsync(s => s.ActivityId == activity.Id);
-        if (taken >= activity.Capacity)
-            return BadRequest(new { message = "No quedan cupos disponibles para esta actividad." });
+        using var tx = await _db.Database.BeginTransactionAsync();
+
+        // Reserva atómica: un único UPDATE que solo avanza el contador si
+        // todavía hay cupo. Bajo carga concurrente, SQLite serializa estas
+        // transacciones — nunca dos personas "ganan" el mismo último cupo.
+        var reserved = await _db.SelectableActivities
+            .Where(a => a.Id == activity.Id && a.TakenCount < a.Capacity)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount + 1));
+
+        if (reserved == 0)
+        {
+            await tx.RollbackAsync();
+            return Conflict(new { message = "Se acaba de completar el cupo de esta actividad. Elegí otra opción." });
+        }
 
         if (existing != null)
         {
+            await _db.SelectableActivities
+                .Where(a => a.Id == existing.ActivityId)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
             _db.ActivitySelections.Remove(existing);
+            await _db.SaveChangesAsync();
         }
 
         _db.ActivitySelections.Add(new ActivitySelection
@@ -96,12 +139,14 @@ public class ActivitySelectionController : ControllerBase
             BlockId = activity.BlockId,
             ActivityId = activity.Id,
         });
-
         await _db.SaveChangesAsync();
+
+        await tx.CommitAsync();
+
         return Ok(new { message = "Selección guardada.", activityId = activity.Id, blockId = activity.BlockId });
     }
 
-    // ── Quitar tu elección en un bloque ──────────────────────────────────────
+    // ── Quitar tu elección (draft) en un bloque ──────────────────────────────
 
     [HttpDelete("select")]
     public async Task<IActionResult> Unselect([FromQuery] string email, [FromQuery] int blockId)
@@ -110,9 +155,50 @@ public class ActivitySelectionController : ControllerBase
             .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == email.ToLower() && s.BlockId == blockId);
 
         if (existing == null) return NoContent();
+        if (existing.IsConfirmed)
+            return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
 
+        using var tx = await _db.Database.BeginTransactionAsync();
+        await _db.SelectableActivities
+            .Where(a => a.Id == existing.ActivityId)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
         _db.ActivitySelections.Remove(existing);
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
         return NoContent();
+    }
+
+    // ── Confirmación definitiva (irreversible) ───────────────────────────────
+
+    public record ConfirmRequest(string Email);
+
+    [HttpPost("confirm")]
+    public async Task<IActionResult> Confirm([FromBody] ConfirmRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { message = "Falta el email." });
+
+        var mySelections = await _db.ActivitySelections
+            .Where(s => s.UserEmail.ToLower() == req.Email.ToLower())
+            .ToListAsync();
+
+        if (mySelections.Any(s => s.IsConfirmed))
+            return BadRequest(new { message = "Ya habías confirmado tu selección definitiva." });
+
+        var allBlockIds = await _db.ActivityBlocks.Select(b => b.Id).ToListAsync();
+        var missing = allBlockIds.Except(mySelections.Select(s => s.BlockId)).ToList();
+        if (missing.Count > 0)
+            return BadRequest(new { message = "Todavía te falta elegir una actividad en algún bloque.", missingBlockIds = missing });
+
+        var now = DateTime.Now;
+        foreach (var s in mySelections)
+        {
+            s.IsConfirmed = true;
+            s.ConfirmedAt = now;
+        }
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Selección confirmada.", confirmedAt = now });
     }
 }

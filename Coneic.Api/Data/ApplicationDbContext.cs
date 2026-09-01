@@ -19,6 +19,9 @@ namespace Coneic.Api.Data
         public DbSet<AppSetting> AppSettings { get; set; }
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        public DbSet<ActivityBlock> ActivityBlocks { get; set; }
+        public DbSet<SelectableActivity> SelectableActivities { get; set; }
+        public DbSet<ActivitySelection> ActivitySelections { get; set; }
 
         private static readonly JsonSerializerOptions _json = new();
 
@@ -30,6 +33,10 @@ namespace Coneic.Api.Data
 
             modelBuilder.Entity<AttendanceRecord>()
                 .HasIndex(r => new { r.RegistrationId, r.SessionId })
+                .IsUnique();
+
+            modelBuilder.Entity<ActivitySelection>()
+                .HasIndex(s => new { s.UserEmail, s.BlockId })
                 .IsUnique();
 
             modelBuilder.Entity<User>()
@@ -89,6 +96,87 @@ namespace Coneic.Api.Data
                 new Activity { Id = 21, Title = "Almuerzo",                                     Description = "",                                                                                                                                               StartTime = new DateTime(2026,8,7,12, 0,0), EndTime = new DateTime(2026,8,7,13,30,0), Location = "Patio del Campus",                SpeakerId = null },
                 new Activity { Id = 22, Title = "Actividad Recreativa y Sorteos",               Description = "Actividades recreativas, concursos y sorteos de premios especiales para los asistentes.",                                                       StartTime = new DateTime(2026,8,7,14, 0,0), EndTime = new DateTime(2026,8,7,16, 0,0), Location = "Patio del Campus",                SpeakerId = null },
                 new Activity { Id = 23, Title = "Acto de Clausura",                             Description = "Ceremonia oficial de cierre del XVIII CONEIC: entrega de diplomas, reconocimientos y palabras de despedida.",                                   StartTime = new DateTime(2026,8,7,16, 0,0), EndTime = new DateTime(2026,8,7,18, 0,0), Location = "Auditorio Principal",              SpeakerId = null }
+            );
+
+            // ══════════════════════════════════════════════════════════════════
+            // ELECCIÓN DE ACTIVIDADES — datos de demo/prueba
+            // Reconstruidos a partir de "elección de actividades.pdf" (Carol,
+            // 1/9/2026). Capacidades = placeholder (30/40) hasta que Acad/GyP
+            // confirmen números reales. Los bloques de Talleres/Charlas son una
+            // agrupación provisoria: los horarios reales todavía se están
+            // definiendo (ver chat 1/9/2026). NO representa la versión final.
+            // ══════════════════════════════════════════════════════════════════
+            modelBuilder.Entity<ActivityBlock>().HasData(
+                new ActivityBlock { Id = 1, Category = "VisitaTecnica", Name = "Visita Técnica", MaxSelections = 1,
+                    Note = "Elegí una visita técnica. Cupos y horarios definitivos a confirmar." },
+                new ActivityBlock { Id = 2, Category = "TallerCharla", Name = "Talleres y Charlas Simultáneas", MaxSelections = 1,
+                    Note = "Agrupación provisoria de demo — los bloques horarios reales todavía se están definiendo con Académica y GyP." }
+            );
+
+            modelBuilder.Entity<SelectableActivity>().HasData(
+                // ── Talleres (1.01–1.10) ─────────────────────────────────────
+                new SelectableActivity { Id = 101, BlockId = 2, Code = "1.01", Capacity = 40, Title = "¿Y ahora qué?", Speaker = "Ing. Axel Colantuono, CRIBA",
+                    Description = "El objetivo del taller es acompañar a estudiantes de la carrera con la duda de qué sucede una vez recibido, cómo posicionarse en el mercado laboral y qué posibilidades hay hoy en día para ingenieros civiles." },
+                new SelectableActivity { Id = 102, BlockId = 2, Code = "1.02", Capacity = 40, Title = "Más allá del chat: fundamentos y aplicaciones prácticas de la IA", Speaker = "Dr. Felipe Ruiz Bruzzone",
+                    Description = "Introducción accesible a la IA conversacional, con foco en Claude: qué es un modelo de lenguaje, por qué puede alucinar y cómo usarla de forma más eficiente y responsable en la formación y el ejercicio profesional." },
+                new SelectableActivity { Id = 103, BlockId = 2, Code = "1.03", Capacity = 40, Title = "Derrumbes. Casos.", Speaker = "Ing. Claudio Silvio Risetto",
+                    Description = "Identificar causas probables de derrumbes. Prevenciones." },
+                new SelectableActivity { Id = 104, BlockId = 2, Code = "1.04", Capacity = 40, Title = "Cómo la tecnología está cambiando la forma de diagnosticar estructuras de hormigón", Speaker = "Ing. Julio Cesar Tomás, ITAC Laboratorio",
+                    Description = "Presentación de casos reales de diagnóstico estructural mediante tecnologías avanzadas. Cómo identificar patologías, comprender el comportamiento del hormigón y definir estrategias técnicas de intervención eficiente." },
+                new SelectableActivity { Id = 105, BlockId = 2, Code = "1.05", Capacity = 40, Title = "Ingeniería de detalle y coordinación de instalaciones: diseñar en la computadora para construir sin errores en la obra", Speaker = "Ing. María Anahí Zoratto Macia",
+                    Description = "Cómo realizar la ingeniería de detalle en instalaciones MEP para obtener modelos digitales listos para fabricación. Detección temprana de interferencias y tolerancias de montaje para asegurar que estructura e instalaciones convivan en armonía." },
+                new SelectableActivity { Id = 106, BlockId = 2, Code = "1.06", Capacity = 40, Title = "Del plano 2D al modelo 3D: cómo la ingeniería MEP digital transforma el diseño de instalaciones", Speaker = "Ing. María Anahí Zoratto Macia",
+                    Description = "Introducción al flujo de trabajo del ingeniero MEP dentro del entorno BIM. Transición de esquemas tradicionales 2D a modelos 3D interactivos para coordinar conductos, tuberías y cables antes de ir a obra, evitando errores millonarios." },
+                new SelectableActivity { Id = 107, BlockId = 2, Code = "1.07", Capacity = 40, Title = "De la distribución real de tensiones al modelo simplificado: impacto en la práctica del Ingeniero Civil", Speaker = "Ing. Bryan Alejandro Castañón, ANEIC Guatemala",
+                    Description = "Criterio técnico en hormigón armado: análisis de cómo la simplificación del Bloque Equivalente de Whitney rige las ecuaciones clave de ACI 318 y CIRSOC 201." },
+                new SelectableActivity { Id = 108, BlockId = 2, Code = "1.08", Capacity = 40, Title = "Sistema de complejos Hidroeléctricos COMAHUE - Río Limay: taller de práctica de roles en sectores de interés público, privado y sociedad", Speaker = "Ing. Gerardo Burdisso",
+                    Description = "Simulación operativa en software de presas hidroeléctricas con juego de roles para la toma de decisiones en generación energética, control de crecidas y gestión ambiental." },
+                new SelectableActivity { Id = 109, BlockId = 2, Code = "1.09", Capacity = 40, Title = "La obra que no contamina: taller de gestión ambiental para ingenieros civiles", Speaker = "Lic. Romina Favilla",
+                    Description = "Práctica en equipo sobre un caso simulado de obra civil en tiempo real: identificación de impactos ambientales, aplicación de jerarquías de mitigación y resolución de imprevistos en obra." },
+                new SelectableActivity { Id = 110, BlockId = 2, Code = "1.10", Capacity = 40, Title = "¿Aguanta o no Aguanta? Taller de Geotecnia en Acción", Speaker = "Ing. Gustavo Daniel Mosquera",
+                    Description = "Un edificio, un puente, una presa: obras distintas que se sostienen —o se caen— por lo mismo. En este taller no vas a escuchar la teoría, la vas a construir con tus manos y en equipo. Diseñá tu estructura sobre un terreno real, cargala hasta el límite y descubrí en vivo cómo el agua cambia las reglas del juego." },
+
+                // ── Charlas simultáneas (2.01–2.06) ──────────────────────────
+                new SelectableActivity { Id = 201, BlockId = 2, Code = "2.01", Capacity = 40, Title = "El ecosistema BIM en la Ingeniería Civil: de los fundamentos teóricos a la tecnología aplicada", Speaker = "Ing. Martín Magallanes",
+                    Description = "Tecnología aplicada, fundamentos y entorno de la metodología BIM, y su integración con la gestión eficiente en obra." },
+                new SelectableActivity { Id = 202, BlockId = 2, Code = "2.02", Capacity = 40, Title = "Rutas y Fauna Silvestre, es tiempo de pensar a todas las vidas", Speaker = "Lic. Nicolás Lodeiro Ocampo",
+                    Description = "Integración del conocimiento técnico y el derecho a la vida silvestre en la infraestructura: impacto de los atropellamientos de fauna y soluciones de ingeniería aplicada." },
+                new SelectableActivity { Id = 203, BlockId = 2, Code = "2.03", Capacity = 40, Title = "Aprender a ApreHender: el diferencial humano frente al avance tecnológico", Speaker = "Ing. Joaquín N. Perrig",
+                    Description = "Por qué el criterio y la conciencia son el verdadero valor diferencial frente a la automatización técnica, y herramientas para liderar tu propio desarrollo en la próxima década." },
+                new SelectableActivity { Id = 204, BlockId = 2, Code = "2.04", Capacity = 40, Title = "Impresión 3D de hormigón en Argentina: desafíos y aprendizajes en proyectos reales", Speaker = "Ing. Rocío Gentico, Techint",
+                    Description = "Desafíos técnicos y operativos superados en proyectos reales, implementación de la tecnología a escala nacional y lecciones aprendidas." },
+                new SelectableActivity { Id = 205, BlockId = 2, Code = "2.05", Capacity = 40, Title = "Demolición, Excavación y Reciclaje en Obras de Gran Escala", Speaker = "Ing. Maximiliano Mauriño, Grupo Mitre",
+                    Description = "Gestión sustentable, técnicas avanzadas de demolición según escala de obra y economía circular con residuos de construcción y demolición (RCD)." },
+                new SelectableActivity { Id = 206, BlockId = 2, Code = "2.06", Capacity = 40, Title = "Terremoto 2026 en Venezuela: ingeniería forense y lecciones aprendidas", Speaker = "Ing. Gustavo Delgado",
+                    Description = "Catalogación de fallas, evolución constructiva e ingeniería forense: análisis exhaustivo de daños estructurales, geomorfológicos y socioeconómicos tras el evento sísmico." },
+
+                // ── Visitas técnicas (4.01–4.26) ─────────────────────────────
+                new SelectableActivity { Id = 401, BlockId = 1, Code = "4.01", Capacity = 30, Title = "Complejo Nuclear Atucha", Description = "Pionera de la Energía Nuclear en América Latina." },
+                new SelectableActivity { Id = 402, BlockId = 1, Code = "4.02", Capacity = 30, Title = "Puerto Buenos Aires", Description = "Ingeniería portuaria y logística multimodal a gran escala." },
+                new SelectableActivity { Id = 403, BlockId = 1, Code = "4.03", Capacity = 30, Title = "Complejo Ambiental Norte III", Description = "Ingeniería ambiental y gestión de residuos a escala metropolitana." },
+                new SelectableActivity { Id = 404, BlockId = 1, Code = "4.04", Capacity = 30, Title = "Planta Potabilizadora Gral. Belgrano", Description = "1.950.000 m³/día de agua tratada para la región metropolitana." },
+                new SelectableActivity { Id = 405, BlockId = 1, Code = "4.05", Capacity = 30, Title = "Planta Depuradora Sudoeste", Description = "237.000 m³/día de líquidos tratados. Sirve a gran parte del partido de La Matanza." },
+                new SelectableActivity { Id = 406, BlockId = 1, Code = "4.06", Capacity = 30, Title = "Planta Depuradora Lanús", Description = "23.328 m³/día de efluentes tratados. Saneamiento directo para 90.000 habitantes." },
+                new SelectableActivity { Id = 407, BlockId = 1, Code = "4.07", Capacity = 30, Title = "Planta Depuradora El Jagüel", Description = "48.000 m³/día de efluentes tratados. Operativa para Ezeiza y parte de Esteban Echeverría." },
+                new SelectableActivity { Id = 408, BlockId = 1, Code = "4.08", Capacity = 30, Title = "Planta Depuradora Fiorito", Description = "77.760 m³/día de efluentes tratados. Beneficia a 270.000 habitantes." },
+                new SelectableActivity { Id = 409, BlockId = 1, Code = "4.09", Capacity = 30, Title = "Planta de Hormigón Sola", Description = "Elementos de hormigón premoldeado. Tecnología y estandarización a gran escala para la industria de la construcción." },
+                new SelectableActivity { Id = 410, BlockId = 1, Code = "4.10", Capacity = 30, Title = "Planta Depuradora Hurlingham", Description = "30.240 m³/día de efluentes tratados. Sirve a Hurlingham, Ituzaingó, Morón y Tres de Febrero." },
+                new SelectableActivity { Id = 411, BlockId = 1, Code = "4.11", Capacity = 30, Title = "Fenomix", Description = "Producción y logística de hormigón elaborado. El detrás de la dosificación y distribución para obras de gran porte." },
+                new SelectableActivity { Id = 412, BlockId = 1, Code = "4.12", Capacity = 30, Title = "Guardería Náutica Neptuno", Description = "Infraestructura costera y portuaria. Soluciones de ingeniería para el almacenamiento y movimiento de embarcaciones." },
+                new SelectableActivity { Id = 413, BlockId = 1, Code = "4.13", Capacity = 30, Title = "Madero Harbour", Description = "Un proyecto de GNV Group para transformar la vida urbana en Puerto Madero." },
+                new SelectableActivity { Id = 414, BlockId = 1, Code = "4.14", Capacity = 30, Title = "Impresora 3D de Concreto", Description = "Primera en su tipo adquirida por una empresa constructora en Argentina." },
+                new SelectableActivity { Id = 415, BlockId = 1, Code = "4.15", Capacity = 30, Title = "Proyecto Udaondo", Description = "Una obra de usos mixtos que integra residencias de lujo, un hotel cinco estrellas y 7.600 m² de amenidades de primer nivel." },
+                new SelectableActivity { Id = 416, BlockId = 1, Code = "4.16", Capacity = 30, Title = "Quartier Bajo Belgrano", Description = "Un proyecto inmobiliario en una de las zonas con mayor proyección de Buenos Aires, que integra el diseño urbano y entorno natural." },
+                new SelectableActivity { Id = 417, BlockId = 1, Code = "4.17", Capacity = 30, Title = "Autopista Parque Dellepiane", Description = "Será la primera autopista parque de la Ciudad, diseñada para optimizar la movilidad y el espacio público." },
+                new SelectableActivity { Id = 418, BlockId = 1, Code = "4.18", Capacity = 30, Title = "MilAires", Description = "Complejo residencial que combina departamentos con grandes espacios verdes y servicios premium propios de un barrio cerrado dentro de la ciudad." },
+                new SelectableActivity { Id = 419, BlockId = 1, Code = "4.19", Capacity = 30, Title = "Puente Labruna", Description = "Ampliación y renovación del puente que conecta el Parque de la Innovación y la Ciudad Universitaria." },
+                new SelectableActivity { Id = 420, BlockId = 1, Code = "4.20", Capacity = 30, Title = "Anillo Pampa", Description = "Nueva conexión entre la Ciudad y el Río de la Plata que mejorará la movilidad e integrará el entorno." },
+                new SelectableActivity { Id = 421, BlockId = 1, Code = "4.21", Capacity = 30, Title = "Ñlet Loreto", Description = "Nueva torre de 17 pisos y 4 subsuelos en Belgrano: departamentos de hasta 555 m² con pileta propia, spa, gimnasio y pileta en la terraza." },
+                new SelectableActivity { Id = 422, BlockId = 1, Code = "4.22", Capacity = 30, Title = "Estadio Más Monumental", Description = "Megaobra histórica del Más Monumental: techado integral, tribuna 360° y ampliación de capacidad a 101.000 espectadores con cerca de 100 columnas perimetrales." },
+                new SelectableActivity { Id = 423, BlockId = 1, Code = "4.23", Capacity = 30, Title = "Centro Cultural San Martín", Description = "Modernización integral y preservación patrimonial: un complejo emblemático de 42.000 m² compuesto por una torre de 12 pisos, cuerpo bajo y 6 subsuelos." },
+                new SelectableActivity { Id = 424, BlockId = 1, Code = "4.24", Capacity = 30, Title = "Escuela Indira Gandhi", Description = "Nueva infraestructura educativa de 2.900 m² en el Barrio 31: diseño bioclimático, sistemas constructivos industrializados y espacios de alta funcionalidad pedagógica." },
+                new SelectableActivity { Id = 425, BlockId = 1, Code = "4.25", Capacity = 30, Title = "Complejo Dorrego Plaza", Description = "Obra residencial de 13.677 m² (2, 3 y 4 ambientes). Trabajos actuales: estructura en 5° piso, inicio de albañilería y grúa torre con trepado." },
+                new SelectableActivity { Id = 426, BlockId = 1, Code = "4.26", Capacity = 30, Title = "JN4016", Description = "70.000 m² cubiertos. Desarrollo de usos mixtos (hotel de lujo, viviendas, oficinas y plaza pública) con un 35% de factor de ocupación y 65% de espacio público." }
             );
 
         }

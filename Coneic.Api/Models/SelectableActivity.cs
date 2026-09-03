@@ -12,6 +12,7 @@ public class SelectableActivity
     public string Title { get; set; } = string.Empty;
     public string? Speaker { get; set; }
     public string? Description { get; set; }
+    public string? ImageUrl { get; set; }
 
     /// <summary>Placeholder until organizers confirm real capacity per activity.</summary>
     public int Capacity { get; set; }

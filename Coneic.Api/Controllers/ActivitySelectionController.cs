@@ -28,7 +28,7 @@ public class ActivitySelectionController : ControllerBase
             .Where(s => s.UserEmail.ToLower() == email.ToLower())
             .ToListAsync();
 
-        var blocks = await _db.ActivityBlocks.OrderBy(b => b.Id).ToListAsync();
+        var blocks = await _db.ActivityBlocks.Where(b => b.IsActive).OrderBy(b => b.Id).ToListAsync();
         var activities = await _db.SelectableActivities.OrderBy(a => a.Code).ToListAsync();
 
         var result = blocks.Select(b => new
@@ -46,6 +46,7 @@ public class ActivitySelectionController : ControllerBase
                 a.Title,
                 a.Speaker,
                 a.Description,
+                a.ImageUrl,
                 a.Capacity,
                 Taken = a.TakenCount,
             }),
@@ -186,7 +187,7 @@ public class ActivitySelectionController : ControllerBase
         if (mySelections.Any(s => s.IsConfirmed))
             return BadRequest(new { message = "Ya habías confirmado tu selección definitiva." });
 
-        var allBlockIds = await _db.ActivityBlocks.Select(b => b.Id).ToListAsync();
+        var allBlockIds = await _db.ActivityBlocks.Where(b => b.IsActive).Select(b => b.Id).ToListAsync();
         var missing = allBlockIds.Except(mySelections.Select(s => s.BlockId)).ToList();
         if (missing.Count > 0)
             return BadRequest(new { message = "Todavía te falta elegir una actividad en algún bloque.", missingBlockIds = missing });

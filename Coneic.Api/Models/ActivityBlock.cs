@@ -18,4 +18,11 @@ public class ActivityBlock
     public string? Note { get; set; }
 
     public int MaxSelections { get; set; } = 1;
+
+    /// <summary>
+    /// Inactive blocks are hidden from GetBlocks and excluded from the
+    /// "you must pick one per block" check in Confirm — lets a block's
+    /// content stay seeded in the DB without being live yet.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
 }

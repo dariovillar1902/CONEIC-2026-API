@@ -434,4 +434,42 @@ internal static class EmailTemplates
 
         return (subject, Wrap("Primera cuota recibida — CONEIC XVIII", banner, body));
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 5. Visita técnica elegida (confirmación definitiva)
+    // ═══════════════════════════════════════════════════════════════════════════
+    public static (string Subject, string Html) ActivitySelectionConfirmed(
+        string toName, string activityCode, string activityTitle, string pdfUrl)
+    {
+        var subject = "Tu visita técnica elegida – CONEIC XVIII";
+        var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Visita técnica confirmada");
+
+        var body = $"""
+            <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
+              Hola, <strong>{toName}</strong>
+            </p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
+              Has elegido tu visita técnica a: <strong>{activityCode} – {activityTitle}</strong>.
+            </p>
+            {WarningBox($"""
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
+                Recordá revisar los EPP (elementos de protección personal) que debés llevar en el
+                siguiente documento:
+              </p>
+            """)}
+            <p style="margin:0 0 24px;text-align:center;">
+              <a href="{pdfUrl}"
+                 style="display:inline-block;background-color:{BgHeader};color:#ffffff;
+                        font-size:14px;font-weight:bold;padding:12px 28px;border-radius:6px;
+                        text-decoration:none;letter-spacing:0.5px;">
+                Ver documento (PDF) →
+              </a>
+            </p>
+            <p style="margin:0;font-size:15px;line-height:1.75;color:{BgHeader};font-weight:bold;">
+              ¡Nos vemos en octubre!
+            </p>
+            """;
+
+        return (subject, Wrap("Visita técnica confirmada — CONEIC XVIII", banner, body));
+    }
 }

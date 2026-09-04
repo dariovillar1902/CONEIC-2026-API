@@ -1,5 +1,6 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
+using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,30 @@ namespace Coneic.Api.Controllers;
 public class ActivitySelectionController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly IEmailService _email;
 
-    public ActivitySelectionController(ApplicationDbContext db)
+    // Recorte temporal ("por ahora") mientras se prueba la feature con el
+    // equipo: solo estas cuentas admin reciben el mail de confirmación, y a
+    // una casilla personal real (son cuentas institucionales compartidas).
+    // Sacar este mapeo cuando se habilite para todo el mundo.
+    private static readonly Dictionary<string, (string Name, string Email)[]> PilotRecipients = new()
+    {
+        ["web@coneic2026.com.ar"] = new[] { ("Darío", "dario_villar2001@hotmail.com") },
+        ["prensa@coneic2026.com.ar"] = new[] { ("Carol", "carollombardino97@gmail.com") },
+        ["directorio@coneic2026.com.ar"] = new[]
+        {
+            ("Sofi", "spizzamus@frba.utn.edu.ar"),
+            ("Cande", "candepoggi@frba.utn.edu.ar"),
+        },
+    };
+
+    private const string EppPdfUrl =
+        "https://coneic2026storage.blob.core.windows.net/comprobantes/misc/2026-09/eleccion-de-actividades.pdf";
+
+    public ActivitySelectionController(ApplicationDbContext db, IEmailService email)
     {
         _db = db;
+        _email = email;
     }
 
     // ── Listado de bloques + opciones + cupos + tu elección actual (draft o confirmada) ──
@@ -200,6 +221,37 @@ public class ActivitySelectionController : ControllerBase
         }
         await _db.SaveChangesAsync();
 
+        await SendPilotConfirmationEmailAsync(req.Email, mySelections);
+
         return Ok(new { message = "Selección confirmada.", confirmedAt = now });
+    }
+
+    // Envía el mail de "visita técnica elegida" solo si la cuenta que confirmó
+    // está en la lista piloto (ver PilotRecipients). No falla la confirmación
+    // si el envío tiene algún problema — la selección ya quedó guardada.
+    private async Task SendPilotConfirmationEmailAsync(string userEmail, List<ActivitySelection> selections)
+    {
+        if (!PilotRecipients.TryGetValue(userEmail.ToLower(), out var recipients)) return;
+
+        var visita = await (
+            from s in _db.ActivitySelections.Where(x => selections.Select(sel => sel.Id).Contains(x.Id))
+            join a in _db.SelectableActivities on s.ActivityId equals a.Id
+            where a.BlockId == 1 // bloque "Visita Técnica"
+            select new { a.Code, a.Title }
+        ).FirstOrDefaultAsync();
+
+        if (visita == null) return;
+
+        foreach (var (name, email) in recipients)
+        {
+            try
+            {
+                await _email.SendActivitySelectionConfirmedAsync(email, name, visita.Code, visita.Title, EppPdfUrl);
+            }
+            catch
+            {
+                // no interrumpir la confirmación por un fallo de envío puntual
+            }
+        }
     }
 }

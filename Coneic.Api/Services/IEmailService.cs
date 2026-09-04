@@ -17,6 +17,9 @@ public interface IEmailService
 
     /// <summary>Envía el email de primera cuota recibida.</summary>
     Task SendFirstPaymentReceivedAsync(string toEmail, string toName, string dueDate);
+
+    /// <summary>Envía el email de visita técnica confirmada (elección definitiva de actividades).</summary>
+    Task SendActivitySelectionConfirmedAsync(string toEmail, string toName, string activityCode, string activityTitle, string pdfUrl);
 }
 
 public record RegistrationEmailData(

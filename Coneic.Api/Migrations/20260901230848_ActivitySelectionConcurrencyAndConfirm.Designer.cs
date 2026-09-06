@@ -3,6 +3,7 @@ using System;
 using Coneic.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Coneic.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901230848_ActivitySelectionConcurrencyAndConfirm")]
+    partial class ActivitySelectionConcurrencyAndConfirm
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -278,9 +281,6 @@ namespace Coneic.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("MaxSelections")
                         .HasColumnType("INTEGER");
 
@@ -300,7 +300,6 @@ namespace Coneic.Api.Migrations
                         {
                             Id = 1,
                             Category = "VisitaTecnica",
-                            IsActive = true,
                             MaxSelections = 1,
                             Name = "Visita Técnica",
                             Note = "Elegí una visita técnica. Cupos y horarios definitivos a confirmar."
@@ -309,7 +308,6 @@ namespace Coneic.Api.Migrations
                         {
                             Id = 2,
                             Category = "TallerCharla",
-                            IsActive = false,
                             MaxSelections = 1,
                             Name = "Talleres y Charlas Simultáneas",
                             Note = "Agrupación provisoria de demo — los bloques horarios reales todavía se están definiendo con Académica y GyP."
@@ -637,9 +635,6 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Speaker")
                         .HasColumnType("TEXT");
 
@@ -838,7 +833,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.01",
                             Description = "Pionera de la Energía Nuclear en América Latina.",
-                            ImageUrl = "/assets/visitas/visita-4-01.jpg",
                             TakenCount = 0,
                             Title = "Complejo Nuclear Atucha"
                         },
@@ -849,7 +843,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.02",
                             Description = "Ingeniería portuaria y logística multimodal a gran escala.",
-                            ImageUrl = "/assets/visitas/visita-4-02.jpg",
                             TakenCount = 0,
                             Title = "Puerto Buenos Aires"
                         },
@@ -860,7 +853,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.03",
                             Description = "Ingeniería ambiental y gestión de residuos a escala metropolitana.",
-                            ImageUrl = "/assets/visitas/visita-4-03.jpg",
                             TakenCount = 0,
                             Title = "Complejo Ambiental Norte III"
                         },
@@ -871,7 +863,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.04",
                             Description = "1.950.000 m³/día de agua tratada para la región metropolitana.",
-                            ImageUrl = "/assets/visitas/visita-4-04.jpg",
                             TakenCount = 0,
                             Title = "Planta Potabilizadora Gral. Belgrano"
                         },
@@ -882,7 +873,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.05",
                             Description = "237.000 m³/día de líquidos tratados. Sirve a gran parte del partido de La Matanza.",
-                            ImageUrl = "/assets/visitas/visita-4-05.jpg",
                             TakenCount = 0,
                             Title = "Planta Depuradora Sudoeste"
                         },
@@ -893,7 +883,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.06",
                             Description = "23.328 m³/día de efluentes tratados. Saneamiento directo para 90.000 habitantes.",
-                            ImageUrl = "/assets/visitas/visita-4-06.jpg",
                             TakenCount = 0,
                             Title = "Planta Depuradora Lanús"
                         },
@@ -904,7 +893,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.07",
                             Description = "48.000 m³/día de efluentes tratados. Operativa para Ezeiza y parte de Esteban Echeverría.",
-                            ImageUrl = "/assets/visitas/visita-4-07.jpg",
                             TakenCount = 0,
                             Title = "Planta Depuradora El Jagüel"
                         },
@@ -915,7 +903,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.08",
                             Description = "77.760 m³/día de efluentes tratados. Beneficia a 270.000 habitantes.",
-                            ImageUrl = "/assets/visitas/visita-4-08.jpg",
                             TakenCount = 0,
                             Title = "Planta Depuradora Fiorito"
                         },
@@ -926,7 +913,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.09",
                             Description = "Elementos de hormigón premoldeado. Tecnología y estandarización a gran escala para la industria de la construcción.",
-                            ImageUrl = "/assets/visitas/visita-4-09.jpg",
                             TakenCount = 0,
                             Title = "Planta de Hormigón Sola"
                         },
@@ -937,7 +923,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.10",
                             Description = "30.240 m³/día de efluentes tratados. Sirve a Hurlingham, Ituzaingó, Morón y Tres de Febrero.",
-                            ImageUrl = "/assets/visitas/visita-4-10.jpg",
                             TakenCount = 0,
                             Title = "Planta Depuradora Hurlingham"
                         },
@@ -948,7 +933,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.11",
                             Description = "Producción y logística de hormigón elaborado. El detrás de la dosificación y distribución para obras de gran porte.",
-                            ImageUrl = "/assets/visitas/visita-4-11.jpg",
                             TakenCount = 0,
                             Title = "Fenomix"
                         },
@@ -959,7 +943,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.12",
                             Description = "Infraestructura costera y portuaria. Soluciones de ingeniería para el almacenamiento y movimiento de embarcaciones.",
-                            ImageUrl = "/assets/visitas/visita-4-12.jpg",
                             TakenCount = 0,
                             Title = "Guardería Náutica Neptuno"
                         },
@@ -970,7 +953,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.13",
                             Description = "Un proyecto de GNV Group para transformar la vida urbana en Puerto Madero.",
-                            ImageUrl = "/assets/visitas/visita-4-13.jpg",
                             TakenCount = 0,
                             Title = "Madero Harbour"
                         },
@@ -981,7 +963,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.14",
                             Description = "Primera en su tipo adquirida por una empresa constructora en Argentina.",
-                            ImageUrl = "/assets/visitas/visita-4-14.jpg",
                             TakenCount = 0,
                             Title = "Impresora 3D de Concreto"
                         },
@@ -992,7 +973,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.15",
                             Description = "Una obra de usos mixtos que integra residencias de lujo, un hotel cinco estrellas y 7.600 m² de amenidades de primer nivel.",
-                            ImageUrl = "/assets/visitas/visita-4-15.jpg",
                             TakenCount = 0,
                             Title = "Proyecto Udaondo"
                         },
@@ -1003,7 +983,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.16",
                             Description = "Un proyecto inmobiliario en una de las zonas con mayor proyección de Buenos Aires, que integra el diseño urbano y entorno natural.",
-                            ImageUrl = "/assets/visitas/visita-4-16.jpg",
                             TakenCount = 0,
                             Title = "Quartier Bajo Belgrano"
                         },
@@ -1014,7 +993,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.17",
                             Description = "Será la primera autopista parque de la Ciudad, diseñada para optimizar la movilidad y el espacio público.",
-                            ImageUrl = "/assets/visitas/visita-4-17.jpg",
                             TakenCount = 0,
                             Title = "Autopista Parque Dellepiane"
                         },
@@ -1025,7 +1003,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.18",
                             Description = "Complejo residencial que combina departamentos con grandes espacios verdes y servicios premium propios de un barrio cerrado dentro de la ciudad.",
-                            ImageUrl = "/assets/visitas/visita-4-18.jpg",
                             TakenCount = 0,
                             Title = "MilAires"
                         },
@@ -1036,7 +1013,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.19",
                             Description = "Ampliación y renovación del puente que conecta el Parque de la Innovación y la Ciudad Universitaria.",
-                            ImageUrl = "/assets/visitas/visita-4-19.jpg",
                             TakenCount = 0,
                             Title = "Puente Labruna"
                         },
@@ -1047,7 +1023,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.20",
                             Description = "Nueva conexión entre la Ciudad y el Río de la Plata que mejorará la movilidad e integrará el entorno.",
-                            ImageUrl = "/assets/visitas/visita-4-20.jpg",
                             TakenCount = 0,
                             Title = "Anillo Pampa"
                         },
@@ -1058,7 +1033,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.21",
                             Description = "Nueva torre de 17 pisos y 4 subsuelos en Belgrano: departamentos de hasta 555 m² con pileta propia, spa, gimnasio y pileta en la terraza.",
-                            ImageUrl = "/assets/visitas/visita-4-21.jpg",
                             TakenCount = 0,
                             Title = "Ñlet Loreto"
                         },
@@ -1069,7 +1043,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.22",
                             Description = "Megaobra histórica del Más Monumental: techado integral, tribuna 360° y ampliación de capacidad a 101.000 espectadores con cerca de 100 columnas perimetrales.",
-                            ImageUrl = "/assets/visitas/visita-4-22.jpg",
                             TakenCount = 0,
                             Title = "Estadio Más Monumental"
                         },
@@ -1080,7 +1053,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.23",
                             Description = "Modernización integral y preservación patrimonial: un complejo emblemático de 42.000 m² compuesto por una torre de 12 pisos, cuerpo bajo y 6 subsuelos.",
-                            ImageUrl = "/assets/visitas/visita-4-23.jpg",
                             TakenCount = 0,
                             Title = "Centro Cultural San Martín"
                         },
@@ -1091,7 +1063,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.24",
                             Description = "Nueva infraestructura educativa de 2.900 m² en el Barrio 31: diseño bioclimático, sistemas constructivos industrializados y espacios de alta funcionalidad pedagógica.",
-                            ImageUrl = "/assets/visitas/visita-4-24.jpg",
                             TakenCount = 0,
                             Title = "Escuela Indira Gandhi"
                         },
@@ -1102,7 +1073,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.25",
                             Description = "Obra residencial de 13.677 m² (2, 3 y 4 ambientes). Trabajos actuales: estructura en 5° piso, inicio de albañilería y grúa torre con trepado.",
-                            ImageUrl = "/assets/visitas/visita-4-25.jpg",
                             TakenCount = 0,
                             Title = "Complejo Dorrego Plaza"
                         },
@@ -1113,7 +1083,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.26",
                             Description = "70.000 m² cubiertos. Desarrollo de usos mixtos (hotel de lujo, viviendas, oficinas y plaza pública) con un 35% de factor de ocupación y 65% de espacio público.",
-                            ImageUrl = "/assets/visitas/visita-4-26.jpg",
                             TakenCount = 0,
                             Title = "JN4016"
                         });

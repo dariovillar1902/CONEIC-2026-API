@@ -53,6 +53,13 @@ public class AcsEmailService : IEmailService
         await SendAsync(toEmail, toName, subject, html);
     }
 
+    public async Task SendActivitySelectionConfirmedAsync(
+        string toEmail, string toName, string activityCode, string activityTitle, string pdfUrl)
+    {
+        var (subject, html) = EmailTemplates.ActivitySelectionConfirmed(toName, activityCode, activityTitle, pdfUrl);
+        await SendAsync(toEmail, toName, subject, html);
+    }
+
     // ── Método interno ─────────────────────────────────────────────────────────
 
     private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)

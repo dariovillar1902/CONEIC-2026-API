@@ -43,4 +43,13 @@ public class NullEmailService : IEmailService
         _logger.LogInformation("[DEV EMAIL] FirstPaymentReceived → {Email} ({Name})", toEmail, toName);
         return Task.CompletedTask;
     }
+
+    public Task SendActivitySelectionConfirmedAsync(
+        string toEmail, string toName, string activityCode, string activityTitle, string pdfUrl)
+    {
+        _logger.LogInformation(
+            "[DEV EMAIL] ActivitySelectionConfirmed → {Email} ({Name}) | {Code} - {Title}",
+            toEmail, toName, activityCode, activityTitle);
+        return Task.CompletedTask;
+    }
 }

@@ -3,6 +3,7 @@ using System;
 using Coneic.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Coneic.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901224501_AddActivitySelection")]
+    partial class AddActivitySelection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -278,9 +281,6 @@ namespace Coneic.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("MaxSelections")
                         .HasColumnType("INTEGER");
 
@@ -300,7 +300,6 @@ namespace Coneic.Api.Migrations
                         {
                             Id = 1,
                             Category = "VisitaTecnica",
-                            IsActive = true,
                             MaxSelections = 1,
                             Name = "Visita Técnica",
                             Note = "Elegí una visita técnica. Cupos y horarios definitivos a confirmar."
@@ -309,7 +308,6 @@ namespace Coneic.Api.Migrations
                         {
                             Id = 2,
                             Category = "TallerCharla",
-                            IsActive = false,
                             MaxSelections = 1,
                             Name = "Talleres y Charlas Simultáneas",
                             Note = "Agrupación provisoria de demo — los bloques horarios reales todavía se están definiendo con Académica y GyP."
@@ -326,12 +324,6 @@ namespace Coneic.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("BlockId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsConfirmed")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("SelectedAt")
@@ -637,14 +629,8 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Speaker")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("TakenCount")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -663,7 +649,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.01",
                             Description = "El objetivo del taller es acompañar a estudiantes de la carrera con la duda de qué sucede una vez recibido, cómo posicionarse en el mercado laboral y qué posibilidades hay hoy en día para ingenieros civiles.",
                             Speaker = "Ing. Axel Colantuono, CRIBA",
-                            TakenCount = 0,
                             Title = "¿Y ahora qué?"
                         },
                         new
@@ -674,7 +659,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.02",
                             Description = "Introducción accesible a la IA conversacional, con foco en Claude: qué es un modelo de lenguaje, por qué puede alucinar y cómo usarla de forma más eficiente y responsable en la formación y el ejercicio profesional.",
                             Speaker = "Dr. Felipe Ruiz Bruzzone",
-                            TakenCount = 0,
                             Title = "Más allá del chat: fundamentos y aplicaciones prácticas de la IA"
                         },
                         new
@@ -685,7 +669,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.03",
                             Description = "Identificar causas probables de derrumbes. Prevenciones.",
                             Speaker = "Ing. Claudio Silvio Risetto",
-                            TakenCount = 0,
                             Title = "Derrumbes. Casos."
                         },
                         new
@@ -696,7 +679,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.04",
                             Description = "Presentación de casos reales de diagnóstico estructural mediante tecnologías avanzadas. Cómo identificar patologías, comprender el comportamiento del hormigón y definir estrategias técnicas de intervención eficiente.",
                             Speaker = "Ing. Julio Cesar Tomás, ITAC Laboratorio",
-                            TakenCount = 0,
                             Title = "Cómo la tecnología está cambiando la forma de diagnosticar estructuras de hormigón"
                         },
                         new
@@ -707,7 +689,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.05",
                             Description = "Cómo realizar la ingeniería de detalle en instalaciones MEP para obtener modelos digitales listos para fabricación. Detección temprana de interferencias y tolerancias de montaje para asegurar que estructura e instalaciones convivan en armonía.",
                             Speaker = "Ing. María Anahí Zoratto Macia",
-                            TakenCount = 0,
                             Title = "Ingeniería de detalle y coordinación de instalaciones: diseñar en la computadora para construir sin errores en la obra"
                         },
                         new
@@ -718,7 +699,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.06",
                             Description = "Introducción al flujo de trabajo del ingeniero MEP dentro del entorno BIM. Transición de esquemas tradicionales 2D a modelos 3D interactivos para coordinar conductos, tuberías y cables antes de ir a obra, evitando errores millonarios.",
                             Speaker = "Ing. María Anahí Zoratto Macia",
-                            TakenCount = 0,
                             Title = "Del plano 2D al modelo 3D: cómo la ingeniería MEP digital transforma el diseño de instalaciones"
                         },
                         new
@@ -729,7 +709,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.07",
                             Description = "Criterio técnico en hormigón armado: análisis de cómo la simplificación del Bloque Equivalente de Whitney rige las ecuaciones clave de ACI 318 y CIRSOC 201.",
                             Speaker = "Ing. Bryan Alejandro Castañón, ANEIC Guatemala",
-                            TakenCount = 0,
                             Title = "De la distribución real de tensiones al modelo simplificado: impacto en la práctica del Ingeniero Civil"
                         },
                         new
@@ -740,7 +719,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.08",
                             Description = "Simulación operativa en software de presas hidroeléctricas con juego de roles para la toma de decisiones en generación energética, control de crecidas y gestión ambiental.",
                             Speaker = "Ing. Gerardo Burdisso",
-                            TakenCount = 0,
                             Title = "Sistema de complejos Hidroeléctricos COMAHUE - Río Limay: taller de práctica de roles en sectores de interés público, privado y sociedad"
                         },
                         new
@@ -751,7 +729,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.09",
                             Description = "Práctica en equipo sobre un caso simulado de obra civil en tiempo real: identificación de impactos ambientales, aplicación de jerarquías de mitigación y resolución de imprevistos en obra.",
                             Speaker = "Lic. Romina Favilla",
-                            TakenCount = 0,
                             Title = "La obra que no contamina: taller de gestión ambiental para ingenieros civiles"
                         },
                         new
@@ -762,7 +739,6 @@ namespace Coneic.Api.Migrations
                             Code = "1.10",
                             Description = "Un edificio, un puente, una presa: obras distintas que se sostienen —o se caen— por lo mismo. En este taller no vas a escuchar la teoría, la vas a construir con tus manos y en equipo. Diseñá tu estructura sobre un terreno real, cargala hasta el límite y descubrí en vivo cómo el agua cambia las reglas del juego.",
                             Speaker = "Ing. Gustavo Daniel Mosquera",
-                            TakenCount = 0,
                             Title = "¿Aguanta o no Aguanta? Taller de Geotecnia en Acción"
                         },
                         new
@@ -773,7 +749,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.01",
                             Description = "Tecnología aplicada, fundamentos y entorno de la metodología BIM, y su integración con la gestión eficiente en obra.",
                             Speaker = "Ing. Martín Magallanes",
-                            TakenCount = 0,
                             Title = "El ecosistema BIM en la Ingeniería Civil: de los fundamentos teóricos a la tecnología aplicada"
                         },
                         new
@@ -784,7 +759,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.02",
                             Description = "Integración del conocimiento técnico y el derecho a la vida silvestre en la infraestructura: impacto de los atropellamientos de fauna y soluciones de ingeniería aplicada.",
                             Speaker = "Lic. Nicolás Lodeiro Ocampo",
-                            TakenCount = 0,
                             Title = "Rutas y Fauna Silvestre, es tiempo de pensar a todas las vidas"
                         },
                         new
@@ -795,7 +769,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.03",
                             Description = "Por qué el criterio y la conciencia son el verdadero valor diferencial frente a la automatización técnica, y herramientas para liderar tu propio desarrollo en la próxima década.",
                             Speaker = "Ing. Joaquín N. Perrig",
-                            TakenCount = 0,
                             Title = "Aprender a ApreHender: el diferencial humano frente al avance tecnológico"
                         },
                         new
@@ -806,7 +779,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.04",
                             Description = "Desafíos técnicos y operativos superados en proyectos reales, implementación de la tecnología a escala nacional y lecciones aprendidas.",
                             Speaker = "Ing. Rocío Gentico, Techint",
-                            TakenCount = 0,
                             Title = "Impresión 3D de hormigón en Argentina: desafíos y aprendizajes en proyectos reales"
                         },
                         new
@@ -817,7 +789,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.05",
                             Description = "Gestión sustentable, técnicas avanzadas de demolición según escala de obra y economía circular con residuos de construcción y demolición (RCD).",
                             Speaker = "Ing. Maximiliano Mauriño, Grupo Mitre",
-                            TakenCount = 0,
                             Title = "Demolición, Excavación y Reciclaje en Obras de Gran Escala"
                         },
                         new
@@ -828,7 +799,6 @@ namespace Coneic.Api.Migrations
                             Code = "2.06",
                             Description = "Catalogación de fallas, evolución constructiva e ingeniería forense: análisis exhaustivo de daños estructurales, geomorfológicos y socioeconómicos tras el evento sísmico.",
                             Speaker = "Ing. Gustavo Delgado",
-                            TakenCount = 0,
                             Title = "Terremoto 2026 en Venezuela: ingeniería forense y lecciones aprendidas"
                         },
                         new
@@ -838,8 +808,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.01",
                             Description = "Pionera de la Energía Nuclear en América Latina.",
-                            ImageUrl = "/assets/visitas/visita-4-01.jpg",
-                            TakenCount = 0,
                             Title = "Complejo Nuclear Atucha"
                         },
                         new
@@ -849,8 +817,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.02",
                             Description = "Ingeniería portuaria y logística multimodal a gran escala.",
-                            ImageUrl = "/assets/visitas/visita-4-02.jpg",
-                            TakenCount = 0,
                             Title = "Puerto Buenos Aires"
                         },
                         new
@@ -860,8 +826,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.03",
                             Description = "Ingeniería ambiental y gestión de residuos a escala metropolitana.",
-                            ImageUrl = "/assets/visitas/visita-4-03.jpg",
-                            TakenCount = 0,
                             Title = "Complejo Ambiental Norte III"
                         },
                         new
@@ -871,8 +835,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.04",
                             Description = "1.950.000 m³/día de agua tratada para la región metropolitana.",
-                            ImageUrl = "/assets/visitas/visita-4-04.jpg",
-                            TakenCount = 0,
                             Title = "Planta Potabilizadora Gral. Belgrano"
                         },
                         new
@@ -882,8 +844,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.05",
                             Description = "237.000 m³/día de líquidos tratados. Sirve a gran parte del partido de La Matanza.",
-                            ImageUrl = "/assets/visitas/visita-4-05.jpg",
-                            TakenCount = 0,
                             Title = "Planta Depuradora Sudoeste"
                         },
                         new
@@ -893,8 +853,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.06",
                             Description = "23.328 m³/día de efluentes tratados. Saneamiento directo para 90.000 habitantes.",
-                            ImageUrl = "/assets/visitas/visita-4-06.jpg",
-                            TakenCount = 0,
                             Title = "Planta Depuradora Lanús"
                         },
                         new
@@ -904,8 +862,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.07",
                             Description = "48.000 m³/día de efluentes tratados. Operativa para Ezeiza y parte de Esteban Echeverría.",
-                            ImageUrl = "/assets/visitas/visita-4-07.jpg",
-                            TakenCount = 0,
                             Title = "Planta Depuradora El Jagüel"
                         },
                         new
@@ -915,8 +871,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.08",
                             Description = "77.760 m³/día de efluentes tratados. Beneficia a 270.000 habitantes.",
-                            ImageUrl = "/assets/visitas/visita-4-08.jpg",
-                            TakenCount = 0,
                             Title = "Planta Depuradora Fiorito"
                         },
                         new
@@ -926,8 +880,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.09",
                             Description = "Elementos de hormigón premoldeado. Tecnología y estandarización a gran escala para la industria de la construcción.",
-                            ImageUrl = "/assets/visitas/visita-4-09.jpg",
-                            TakenCount = 0,
                             Title = "Planta de Hormigón Sola"
                         },
                         new
@@ -937,8 +889,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.10",
                             Description = "30.240 m³/día de efluentes tratados. Sirve a Hurlingham, Ituzaingó, Morón y Tres de Febrero.",
-                            ImageUrl = "/assets/visitas/visita-4-10.jpg",
-                            TakenCount = 0,
                             Title = "Planta Depuradora Hurlingham"
                         },
                         new
@@ -948,8 +898,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.11",
                             Description = "Producción y logística de hormigón elaborado. El detrás de la dosificación y distribución para obras de gran porte.",
-                            ImageUrl = "/assets/visitas/visita-4-11.jpg",
-                            TakenCount = 0,
                             Title = "Fenomix"
                         },
                         new
@@ -959,8 +907,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.12",
                             Description = "Infraestructura costera y portuaria. Soluciones de ingeniería para el almacenamiento y movimiento de embarcaciones.",
-                            ImageUrl = "/assets/visitas/visita-4-12.jpg",
-                            TakenCount = 0,
                             Title = "Guardería Náutica Neptuno"
                         },
                         new
@@ -970,8 +916,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.13",
                             Description = "Un proyecto de GNV Group para transformar la vida urbana en Puerto Madero.",
-                            ImageUrl = "/assets/visitas/visita-4-13.jpg",
-                            TakenCount = 0,
                             Title = "Madero Harbour"
                         },
                         new
@@ -981,8 +925,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.14",
                             Description = "Primera en su tipo adquirida por una empresa constructora en Argentina.",
-                            ImageUrl = "/assets/visitas/visita-4-14.jpg",
-                            TakenCount = 0,
                             Title = "Impresora 3D de Concreto"
                         },
                         new
@@ -992,8 +934,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.15",
                             Description = "Una obra de usos mixtos que integra residencias de lujo, un hotel cinco estrellas y 7.600 m² de amenidades de primer nivel.",
-                            ImageUrl = "/assets/visitas/visita-4-15.jpg",
-                            TakenCount = 0,
                             Title = "Proyecto Udaondo"
                         },
                         new
@@ -1003,8 +943,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.16",
                             Description = "Un proyecto inmobiliario en una de las zonas con mayor proyección de Buenos Aires, que integra el diseño urbano y entorno natural.",
-                            ImageUrl = "/assets/visitas/visita-4-16.jpg",
-                            TakenCount = 0,
                             Title = "Quartier Bajo Belgrano"
                         },
                         new
@@ -1014,8 +952,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.17",
                             Description = "Será la primera autopista parque de la Ciudad, diseñada para optimizar la movilidad y el espacio público.",
-                            ImageUrl = "/assets/visitas/visita-4-17.jpg",
-                            TakenCount = 0,
                             Title = "Autopista Parque Dellepiane"
                         },
                         new
@@ -1025,8 +961,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.18",
                             Description = "Complejo residencial que combina departamentos con grandes espacios verdes y servicios premium propios de un barrio cerrado dentro de la ciudad.",
-                            ImageUrl = "/assets/visitas/visita-4-18.jpg",
-                            TakenCount = 0,
                             Title = "MilAires"
                         },
                         new
@@ -1036,8 +970,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.19",
                             Description = "Ampliación y renovación del puente que conecta el Parque de la Innovación y la Ciudad Universitaria.",
-                            ImageUrl = "/assets/visitas/visita-4-19.jpg",
-                            TakenCount = 0,
                             Title = "Puente Labruna"
                         },
                         new
@@ -1047,8 +979,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.20",
                             Description = "Nueva conexión entre la Ciudad y el Río de la Plata que mejorará la movilidad e integrará el entorno.",
-                            ImageUrl = "/assets/visitas/visita-4-20.jpg",
-                            TakenCount = 0,
                             Title = "Anillo Pampa"
                         },
                         new
@@ -1058,8 +988,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.21",
                             Description = "Nueva torre de 17 pisos y 4 subsuelos en Belgrano: departamentos de hasta 555 m² con pileta propia, spa, gimnasio y pileta en la terraza.",
-                            ImageUrl = "/assets/visitas/visita-4-21.jpg",
-                            TakenCount = 0,
                             Title = "Ñlet Loreto"
                         },
                         new
@@ -1069,8 +997,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.22",
                             Description = "Megaobra histórica del Más Monumental: techado integral, tribuna 360° y ampliación de capacidad a 101.000 espectadores con cerca de 100 columnas perimetrales.",
-                            ImageUrl = "/assets/visitas/visita-4-22.jpg",
-                            TakenCount = 0,
                             Title = "Estadio Más Monumental"
                         },
                         new
@@ -1080,8 +1006,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.23",
                             Description = "Modernización integral y preservación patrimonial: un complejo emblemático de 42.000 m² compuesto por una torre de 12 pisos, cuerpo bajo y 6 subsuelos.",
-                            ImageUrl = "/assets/visitas/visita-4-23.jpg",
-                            TakenCount = 0,
                             Title = "Centro Cultural San Martín"
                         },
                         new
@@ -1091,8 +1015,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.24",
                             Description = "Nueva infraestructura educativa de 2.900 m² en el Barrio 31: diseño bioclimático, sistemas constructivos industrializados y espacios de alta funcionalidad pedagógica.",
-                            ImageUrl = "/assets/visitas/visita-4-24.jpg",
-                            TakenCount = 0,
                             Title = "Escuela Indira Gandhi"
                         },
                         new
@@ -1102,8 +1024,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.25",
                             Description = "Obra residencial de 13.677 m² (2, 3 y 4 ambientes). Trabajos actuales: estructura en 5° piso, inicio de albañilería y grúa torre con trepado.",
-                            ImageUrl = "/assets/visitas/visita-4-25.jpg",
-                            TakenCount = 0,
                             Title = "Complejo Dorrego Plaza"
                         },
                         new
@@ -1113,8 +1033,6 @@ namespace Coneic.Api.Migrations
                             Capacity = 30,
                             Code = "4.26",
                             Description = "70.000 m² cubiertos. Desarrollo de usos mixtos (hotel de lujo, viviendas, oficinas y plaza pública) con un 35% de factor de ocupación y 65% de espacio público.",
-                            ImageUrl = "/assets/visitas/visita-4-26.jpg",
-                            TakenCount = 0,
                             Title = "JN4016"
                         });
                 });

@@ -75,6 +75,11 @@ internal static class DelegateDirectory
     private static readonly Dictionary<string, DelegationInfo> Entries =
         new(StringComparer.OrdinalIgnoreCase)
     {
+        // ── INTERNACIONAL ────────────────────────────────────────────────────
+
+        ["internacional"] = D("Internacional",
+            ("Sebastián Burgos", "")),
+
         // ── REGIÓN CENTRO ────────────────────────────────────────────────────
 
         ["utn - facultad regional venado tuerto"] = D("UTN - Facultad Regional Venado Tuerto",

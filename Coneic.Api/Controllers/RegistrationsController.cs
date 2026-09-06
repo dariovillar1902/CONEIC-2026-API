@@ -33,7 +33,7 @@ namespace Coneic.Api.Controllers
         {
             "1ª Etapa" or "Primera Etapa" => "5 de julio de 2026",
             "2ª Etapa" or "Segunda Etapa" => "9 de agosto de 2026",
-            "3ª Etapa" or "Tercera Etapa" => "16 de septiembre de 2026",
+            "3ª Etapa" or "Tercera Etapa" => "28 de agosto de 2026",
             _ => "la fecha indicada por tu delegado/a"
         };
 
@@ -152,17 +152,24 @@ namespace Coneic.Api.Controllers
             var reg = _db.Registrations.Find(id);
             if (reg == null) return NotFound();
 
-            // Quota check: only when enabling a previously-disabled registration
-            if (dto.IsEnabled && !reg.IsEnabled && !string.IsNullOrEmpty(dto.DelegateEmail))
+            // Only relevant when newly enabling a previously-disabled registration
+            if (dto.IsEnabled && !reg.IsEnabled)
             {
-                var delegateUser = _db.Users.AsEnumerable()
-                    .FirstOrDefault(u => u.Email.Equals(dto.DelegateEmail, StringComparison.OrdinalIgnoreCase));
-                if (delegateUser != null && delegateUser.Quota > 0)
+                var enablingPaused = (await _db.AppSettings.FindAsync("EnablingPaused"))?.Value == "true";
+                if (enablingPaused)
+                    return BadRequest(new { error = "La habilitación de cupos está pausada temporalmente. Esperá a que se confirme la redistribución." });
+
+                if (!string.IsNullOrEmpty(dto.DelegateEmail))
                 {
-                    var faculties = delegateUser.ManagedFaculties;
-                    var enabledCount = _db.Registrations.Count(r => r.IsEnabled && faculties.Contains(r.Faculty));
-                    if (enabledCount >= delegateUser.Quota)
-                        return BadRequest(new { error = "Cupo agotado", quota = delegateUser.Quota, enabled = enabledCount });
+                    var delegateUser = _db.Users.AsEnumerable()
+                        .FirstOrDefault(u => u.Email.Equals(dto.DelegateEmail, StringComparison.OrdinalIgnoreCase));
+                    if (delegateUser != null && delegateUser.Quota > 0)
+                    {
+                        var faculties = delegateUser.ManagedFaculties;
+                        var enabledCount = _db.Registrations.Count(r => r.IsEnabled && faculties.Contains(r.Faculty));
+                        if (enabledCount >= delegateUser.Quota)
+                            return BadRequest(new { error = "Cupo agotado", quota = delegateUser.Quota, enabled = enabledCount });
+                    }
                 }
             }
 
@@ -183,6 +190,13 @@ namespace Coneic.Api.Controllers
                     paymentDeadline: deadline);
             }
 
+            // NOTA: marcar Status=Paid y crear la cuenta del asistente es
+            // responsabilidad exclusiva de Tesorería, vía la validación del
+            // comprobante grupal (PaymentBatchesController.Validate) o una
+            // confirmación manual puntual (ConfirmPayment). Que un delegado
+            // tilde "Pagó Completo" acá es solo una etiqueta informativa —
+            // NO implica que Tesorería ya lo validó. Antes esto disparaba el
+            // alta automática y se saltaba esa validación (CONSD ago/2026).
             return Ok(reg);
         }
 

@@ -99,6 +99,14 @@ namespace Coneic.Api.Controllers
         {
             var batch = _db.PaymentBatches.Find(id);
             if (batch == null) return NotFound();
+
+            foreach (var assignment in batch.Assignments)
+            {
+                var reg = _db.Registrations.Find(assignment.RegistrationId);
+                if (reg == null || reg.Status == "Paid") continue;
+                reg.PaymentCondition = string.Empty;
+            }
+
             _db.PaymentBatches.Remove(batch);
             _db.SaveChanges();
             return NoContent();

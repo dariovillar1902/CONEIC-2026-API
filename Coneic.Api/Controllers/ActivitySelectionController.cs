@@ -26,6 +26,7 @@ public class ActivitySelectionController : ControllerBase
             ("Sofi", "spizzamus@frba.utn.edu.ar"),
             ("Cande", "candepoggi@frba.utn.edu.ar"),
         },
+        ["comision-directiva@coneic2026.com.ar"] = new[] { ("Darío", "dvillar@frba.utn.edu.ar") },
     };
 
     private const string EppPdfUrl =

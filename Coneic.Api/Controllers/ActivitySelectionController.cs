@@ -30,7 +30,7 @@ public class ActivitySelectionController : ControllerBase
     };
 
     private const string EppPdfUrl =
-        "https://coneic2026storage.blob.core.windows.net/comprobantes/misc/2026-09/eleccion-de-actividades.pdf";
+        "https://coneic2026storage.blob.core.windows.net/comprobantes/misc/2026-09/listado-definitivo-actividades.pdf";
 
     public ActivitySelectionController(ApplicationDbContext db, IEmailService email)
     {

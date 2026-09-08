@@ -20,7 +20,11 @@ namespace Coneic.Api.Data;
 /// </summary>
 public class SqlitePragmaInterceptor : DbConnectionInterceptor
 {
-    private const string Pragmas = "PRAGMA busy_timeout=30000;";
+    // Subido de 30s a 60s para el pico de carga del 8-10/9 (~900 personas
+    // eligiendo actividades a la vez). Un timeout más alto deja que más
+    // escrituras encoladas esperen su turno en vez de fallar con "database
+    // is locked" bajo ráfagas de concurrencia.
+    private const string Pragmas = "PRAGMA busy_timeout=60000;";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {

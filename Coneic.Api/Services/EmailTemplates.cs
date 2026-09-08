@@ -472,4 +472,31 @@ internal static class EmailTemplates
 
         return (subject, Wrap("Visita técnica confirmada — CONEIC XVIII", banner, body));
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 6. Reseteo de contraseña (flujo autoservicio "Olvidé mi contraseña")
+    // ═══════════════════════════════════════════════════════════════════════════
+    public static (string Subject, string Html) PasswordReset(string toName, string toEmail, string newPassword)
+    {
+        var subject = "Restablecimos tu contraseña – CONEIC XVIII";
+        var banner  = StatusBanner("#FDF6E3", "#8a6500", "🔑 &nbsp;Contraseña restablecida");
+
+        var body = $"""
+            <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
+              Hola, <strong>{toName}</strong>
+            </p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
+              Recibimos un pedido para restablecer tu contraseña en el portal del CONEIC XVIII.
+              Generamos una nueva para que puedas volver a ingresar.
+            </p>
+            {CredentialsBox(toEmail, newPassword)}
+            {WarningBox($"""
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
+                Si vos no pediste este cambio, escribinos a la brevedad para revisar tu cuenta.
+              </p>
+            """)}
+            """;
+
+        return (subject, Wrap("Contraseña restablecida — CONEIC XVIII", banner, body));
+    }
 }

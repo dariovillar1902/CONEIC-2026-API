@@ -20,6 +20,9 @@ public interface IEmailService
 
     /// <summary>Envía el email de visita técnica confirmada (elección definitiva de actividades).</summary>
     Task SendActivitySelectionConfirmedAsync(string toEmail, string toName, string activityCode, string activityTitle, string pdfUrl);
+
+    /// <summary>Envía la nueva contraseña generada por el flujo de "olvidé mi contraseña".</summary>
+    Task SendPasswordResetAsync(string toEmail, string toName, string newPassword);
 }
 
 public record RegistrationEmailData(

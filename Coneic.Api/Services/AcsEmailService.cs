@@ -60,6 +60,12 @@ public class AcsEmailService : IEmailService
         await SendAsync(toEmail, toName, subject, html);
     }
 
+    public async Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
+    {
+        var (subject, html) = EmailTemplates.PasswordReset(toName, toEmail, newPassword);
+        await SendAsync(toEmail, toName, subject, html);
+    }
+
     // ── Método interno ─────────────────────────────────────────────────────────
 
     private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)

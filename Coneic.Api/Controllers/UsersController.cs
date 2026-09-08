@@ -1,5 +1,6 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
+using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +11,16 @@ namespace Coneic.Api.Controllers
     public class UsersController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
+        private readonly IEmailService _email;
 
-        public UsersController(ApplicationDbContext db)
+        // Evita que se pueda re-disparar el mail de reseteo para la misma
+        // cuenta más de una vez cada 2 minutos (spam-click, o abuso).
+        private static readonly TimeSpan ResetCooldown = TimeSpan.FromMinutes(2);
+
+        public UsersController(ApplicationDbContext db, IEmailService email)
         {
             _db = db;
+            _email = email;
         }
 
         [HttpPost("login")]
@@ -76,6 +83,62 @@ namespace Coneic.Api.Controllers
             _db.SaveChanges();
 
             return Ok(new { message = "Contraseña actualizada correctamente." });
+        }
+
+        // ── Olvidé mi contraseña: autogenera una nueva y la envía por mail ────────
+        //
+        // Devuelve siempre el mismo mensaje genérico exista o no la cuenta, para no
+        // revelar por este medio qué emails están registrados en el sistema.
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            const string genericMessage =
+                "Si el email ingresado tiene una cuenta, te enviamos una contraseña nueva.";
+
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
+
+            if (user == null)
+                return Ok(new { message = genericMessage });
+
+            if (user.LastPasswordResetRequestAt.HasValue
+                && DateTime.UtcNow - user.LastPasswordResetRequestAt.Value < ResetCooldown)
+            {
+                // Ya se envió un mail hace poco — no generamos uno nuevo (invalidaría
+                // el anterior sin necesidad) ni reenviamos para evitar spam-click.
+                return Ok(new { message = genericMessage });
+            }
+
+            var newPassword = GeneratePassword();
+            user.Password = newPassword;
+            user.MustChangePassword = true;
+            user.LastPasswordResetRequestAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var registration = await _db.Registrations
+                .Where(r => r.Email.ToLower() == user.Email.ToLower())
+                .Select(r => new { r.Name, r.Lastname })
+                .FirstOrDefaultAsync();
+            var toName = registration != null ? $"{registration.Name} {registration.Lastname}" : user.Email;
+
+            try
+            {
+                await _email.SendPasswordResetAsync(user.Email, toName, newPassword);
+            }
+            catch
+            {
+                // No exponer detalles de envío al cliente — la contraseña ya quedó
+                // actualizada en la base; un reintento generaría una nueva igual.
+            }
+
+            return Ok(new { message = genericMessage });
+        }
+
+        private static string GeneratePassword()
+        {
+            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+            var rng = Random.Shared;
+            return new string(Enumerable.Range(0, 10).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
         }
     }
 }

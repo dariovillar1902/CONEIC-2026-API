@@ -30,6 +30,9 @@ namespace Coneic.Api.Models
 
         /// <summary>Maximum number of registrations this delegate can enable. 0 = no limit set.</summary>
         public int Quota { get; set; } = 0;
+
+        /// <summary>Last time this account requested a self-service password reset. Used to throttle abuse.</summary>
+        public DateTime? LastPasswordResetRequestAt { get; set; }
     }
 
     public class LoginRequest
@@ -48,5 +51,12 @@ namespace Coneic.Api.Models
 
         [Required]
         public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class ForgotPasswordRequest
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
     }
 }

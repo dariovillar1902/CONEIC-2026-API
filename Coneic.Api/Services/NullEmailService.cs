@@ -52,4 +52,12 @@ public class NullEmailService : IEmailService
             toEmail, toName, activityCode, activityTitle);
         return Task.CompletedTask;
     }
+
+    public Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
+    {
+        _logger.LogInformation(
+            "[DEV EMAIL] PasswordReset → {Email} ({Name}) | Password: {Password}",
+            toEmail, toName, newPassword);
+        return Task.CompletedTask;
+    }
 }

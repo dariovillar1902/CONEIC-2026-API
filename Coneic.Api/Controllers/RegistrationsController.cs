@@ -387,7 +387,7 @@ namespace Coneic.Api.Controllers
         public IActionResult ExportAll()
         {
             var registrations = _db.Registrations.ToList();
-            var fileBytes = BuildExcel(registrations);
+            var fileBytes = BuildExcel(registrations, GetActivityLookup());
             return File(fileBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "inscripciones.xlsx");
@@ -399,7 +399,7 @@ namespace Coneic.Api.Controllers
             var registrations = _db.Registrations.AsEnumerable()
                 .Where(r => string.Equals(r.Faculty, name, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var fileBytes = BuildExcel(registrations);
+            var fileBytes = BuildExcel(registrations, GetActivityLookup());
             var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
             return File(fileBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -420,11 +420,23 @@ namespace Coneic.Api.Controllers
             var registrations = _db.Registrations.AsEnumerable()
                 .Where(r => faculties.Contains(r.Faculty ?? "", StringComparer.OrdinalIgnoreCase))
                 .ToList();
-            var fileBytes = BuildExcel(registrations);
+            var fileBytes = BuildExcel(registrations, GetActivityLookup());
             return File(fileBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"inscripciones_delegado.xlsx");
         }
+
+        // ── Lookup email -> visita técnica elegida, para incluir en los exports ──
+        private record ActivityLookupEntry(string Code, string Title, bool IsConfirmed);
+
+        private Dictionary<string, ActivityLookupEntry> GetActivityLookup() =>
+            (from s in _db.ActivitySelections
+             join a in _db.SelectableActivities on s.ActivityId equals a.Id
+             where s.BlockId == 1 // bloque "Visita Técnica" — el único relevante para este export
+             select new { s.UserEmail, a.Code, a.Title, s.IsConfirmed })
+            .AsEnumerable()
+            .GroupBy(x => x.UserEmail.ToLower())
+            .ToDictionary(g => g.Key, g => new ActivityLookupEntry(g.First().Code, g.First().Title, g.First().IsConfirmed));
 
         [HttpGet("delegate/quota")]
         public IActionResult GetDelegateQuota([FromQuery] string email)
@@ -438,8 +450,10 @@ namespace Coneic.Api.Controllers
             return Ok(new { quota = delegateUser.Quota, enabledCount });
         }
 
-        private static byte[] BuildExcel(IEnumerable<Registration> registrations)
+        private static byte[] BuildExcel(IEnumerable<Registration> registrations, Dictionary<string, ActivityLookupEntry>? activityLookup = null)
         {
+            activityLookup ??= new Dictionary<string, ActivityLookupEntry>();
+
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Inscripciones");
 
@@ -448,7 +462,8 @@ namespace Coneic.Api.Controllers
                 "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
                 "Grupo Sanguíneo", "Afecciones", "Restricciones Alimentarias", "Contacto Emergencia", "Tel. Emergencia",
                 "Etapa", "Precio", "Habilitado", "Condición de Pago",
-                "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción", "Desafío Barreras"
+                "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción", "Desafío Barreras",
+                "Visita Técnica Elegida", "Estado Selección"
             };
 
             for (int i = 0; i < headers.Length; i++)
@@ -484,6 +499,17 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 19).Value = r.Observations ?? "";
                 ws.Cell(row, 20).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
                 ws.Cell(row, 21).Value = r.InterestedInMaccaferri ? "Sí" : "No";
+
+                if (activityLookup.TryGetValue(r.Email.ToLower(), out var activity))
+                {
+                    ws.Cell(row, 22).Value = $"{activity.Code} — {activity.Title}";
+                    ws.Cell(row, 23).Value = activity.IsConfirmed ? "Confirmada" : "Borrador";
+                }
+                else
+                {
+                    ws.Cell(row, 22).Value = "Sin elegir";
+                    ws.Cell(row, 23).Value = "";
+                }
                 row++;
             }
 

@@ -12,6 +12,13 @@ public class ActivitySelectionController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IEmailService _email;
+    private readonly ILogger<ActivitySelectionController> _logger;
+
+    // Única cuenta habilitada para reasignar manualmente la visita de otra
+    // persona (excepción del directorio, fuera del flujo normal). No se
+    // deriva del rol 'admin' genérico a propósito: es un caso puntual, no un
+    // permiso de todos los admins.
+    private const string DirectorioOverrideEmail = "directorio@coneic2026.com.ar";
 
     // Recorte temporal ("por ahora") mientras se prueba la feature con el
     // equipo: solo estas cuentas admin reciben el mail de confirmación, y a
@@ -32,10 +39,11 @@ public class ActivitySelectionController : ControllerBase
     private const string EppPdfUrl =
         "https://coneic2026storage.blob.core.windows.net/comprobantes/misc/2026-09/listado-definitivo-actividades.pdf";
 
-    public ActivitySelectionController(ApplicationDbContext db, IEmailService email)
+    public ActivitySelectionController(ApplicationDbContext db, IEmailService email, ILogger<ActivitySelectionController> logger)
     {
         _db = db;
         _email = email;
+        _logger = logger;
     }
 
     // ── Listado de bloques + opciones + cupos + tu elección actual (draft o confirmada) ──
@@ -192,6 +200,112 @@ public class ActivitySelectionController : ControllerBase
         return NoContent();
     }
 
+    // ── Listado completo de selecciones (admin, sin restricción) ────────────
+    //
+    // Filtros opcionales: activityCode (código de la actividad, ej "4.01"),
+    // faculty (facultad/delegación exacta), sortBy (date_desc | date_asc,
+    // default date_desc = más reciente primero).
+    [HttpGet("all")]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? activityCode,
+        [FromQuery] string? faculty,
+        [FromQuery] string? sortBy)
+    {
+        var query = BuildSelectionQuery(_db, activityCode, faculty);
+        var results = await ApplySort(query, sortBy).ToListAsync();
+        return Ok(results);
+    }
+
+    // ── Listado de selecciones restringido a las facultades del delegado ────
+    //
+    // Mismos filtros que /all, pero solo devuelve gente de las facultades que
+    // el delegado gestiona (ManagedFaculties, o DelegationName si está vacío
+    // — mismo patrón que RegistrationsController.GetByDelegate).
+    [HttpGet("delegate")]
+    public async Task<IActionResult> GetByDelegate(
+        [FromQuery] string email,
+        [FromQuery] string? activityCode,
+        [FromQuery] string? faculty,
+        [FromQuery] string? sortBy)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { message = "Falta el email." });
+
+        var delegateUser = _db.Users.AsEnumerable()
+            .FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+        if (delegateUser == null)
+            return NotFound(new { message = "Delegado no encontrado." });
+
+        var managedFaculties = delegateUser.ManagedFaculties.Count > 0
+            ? delegateUser.ManagedFaculties
+            : (delegateUser.DelegationName != null ? new List<string> { delegateUser.DelegationName } : new List<string>());
+
+        if (managedFaculties.Count == 0)
+            return Ok(Array.Empty<object>());
+
+        var query = BuildSelectionQuery(_db, activityCode, faculty)
+            .Where(x => managedFaculties.Contains(x.Faculty ?? "", StringComparer.OrdinalIgnoreCase));
+
+        var results = await ApplySort(query, sortBy).ToListAsync();
+        return Ok(results);
+    }
+
+    private static IQueryable<SelectionListItem> BuildSelectionQuery(
+        ApplicationDbContext db, string? activityCode, string? faculty)
+    {
+        var query =
+            from s in db.ActivitySelections
+            join a in db.SelectableActivities on s.ActivityId equals a.Id
+            join r in db.Registrations on s.UserEmail.ToLower() equals r.Email.ToLower() into regJoin
+            from r in regJoin.DefaultIfEmpty()
+            select new SelectionListItem
+            {
+                RegistrationId = r != null ? r.Id : (int?)null,
+                Name = r != null ? r.Name : null,
+                Lastname = r != null ? r.Lastname : null,
+                Email = s.UserEmail,
+                Faculty = r != null ? r.Faculty : null,
+                BlockId = s.BlockId,
+                ActivityId = a.Id,
+                ActivityCode = a.Code,
+                ActivityTitle = a.Title,
+                IsConfirmed = s.IsConfirmed,
+                SelectedAt = s.SelectedAt,
+                ConfirmedAt = s.ConfirmedAt,
+            };
+
+        if (!string.IsNullOrWhiteSpace(activityCode))
+            query = query.Where(x => x.ActivityCode == activityCode);
+
+        if (!string.IsNullOrWhiteSpace(faculty))
+            query = query.Where(x => x.Faculty != null && x.Faculty.ToLower() == faculty.ToLower());
+
+        return query;
+    }
+
+    private static IQueryable<SelectionListItem> ApplySort(IQueryable<SelectionListItem> query, string? sortBy) =>
+        sortBy switch
+        {
+            "date_asc" => query.OrderBy(x => x.SelectedAt),
+            _ => query.OrderByDescending(x => x.SelectedAt), // default: más reciente primero
+        };
+
+    private class SelectionListItem
+    {
+        public int? RegistrationId { get; set; }
+        public string? Name { get; set; }
+        public string? Lastname { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? Faculty { get; set; }
+        public int BlockId { get; set; }
+        public int ActivityId { get; set; }
+        public string ActivityCode { get; set; } = string.Empty;
+        public string ActivityTitle { get; set; } = string.Empty;
+        public bool IsConfirmed { get; set; }
+        public DateTime SelectedAt { get; set; }
+        public DateTime? ConfirmedAt { get; set; }
+    }
+
     // ── Confirmación definitiva (irreversible) ───────────────────────────────
 
     public record ConfirmRequest(string Email);
@@ -254,5 +368,98 @@ public class ActivitySelectionController : ControllerBase
                 // no interrumpir la confirmación por un fallo de envío puntual
             }
         }
+    }
+
+    // ── Reasignación manual (excepción del directorio) ───────────────────────
+    //
+    // Mueve a `TargetEmail` a otra actividad del mismo bloque que la que ya
+    // tenía elegida (o le crea una si no tenía). A diferencia de /select:
+    //   - No le saca el cupo a nadie: si la actividad destino ya está llena,
+    //     se le suma 1 a su Capacity en vez de rechazar el cambio.
+    //   - No dispara el mail de confirmación — es una excepción administrativa,
+    //     no una elección nueva del asistente.
+    //   - Solo la cuenta de directorio puede usarlo (ver DirectorioOverrideEmail).
+    public record AdminOverrideRequest(string AdminEmail, string TargetEmail, int ActivityId);
+
+    [HttpPost("admin-override")]
+    public async Task<IActionResult> AdminOverride([FromBody] AdminOverrideRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.AdminEmail) ||
+            !req.AdminEmail.Equals(DirectorioOverrideEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Esta acción está restringida a la cuenta de Directorio." });
+        }
+
+        if (string.IsNullOrWhiteSpace(req.TargetEmail))
+            return BadRequest(new { message = "Falta el email de la persona a reasignar." });
+
+        var newActivity = await _db.SelectableActivities.FindAsync(req.ActivityId);
+        if (newActivity == null)
+            return NotFound(new { message = "La actividad indicada no existe." });
+
+        using var tx = await _db.Database.BeginTransactionAsync();
+
+        var existing = await _db.ActivitySelections
+            .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.TargetEmail.ToLower() && s.BlockId == newActivity.BlockId);
+
+        if (existing != null && existing.ActivityId == newActivity.Id)
+        {
+            await tx.RollbackAsync();
+            return Ok(new { message = "Ya estaba anotado/a en esta actividad.", activityId = newActivity.Id });
+        }
+
+        // Si hay cupo libre, se reserva como siempre. Si no, se agranda la
+        // capacidad en 1 para hacerle lugar sin desplazar a nadie más.
+        var hasRoom = await _db.SelectableActivities.AnyAsync(a => a.Id == newActivity.Id && a.TakenCount < a.Capacity);
+        if (hasRoom)
+        {
+            await _db.SelectableActivities.Where(a => a.Id == newActivity.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount + 1));
+        }
+        else
+        {
+            await _db.SelectableActivities.Where(a => a.Id == newActivity.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Capacity, a => a.Capacity + 1)
+                    .SetProperty(a => a.TakenCount, a => a.TakenCount + 1));
+        }
+
+        if (existing != null)
+        {
+            await _db.SelectableActivities.Where(a => a.Id == existing.ActivityId)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
+
+            existing.ActivityId = newActivity.Id;
+            existing.SelectedAt = DateTime.Now;
+            // Una reasignación de directorio es definitiva por definición —
+            // si la selección original había quedado en borrador (la persona
+            // nunca llegó a confirmar), no debe seguir en borrador después
+            // de esto.
+            existing.IsConfirmed = true;
+            existing.ConfirmedAt ??= DateTime.Now;
+            await _db.SaveChangesAsync();
+        }
+        else
+        {
+            _db.ActivitySelections.Add(new ActivitySelection
+            {
+                UserEmail = req.TargetEmail,
+                BlockId = newActivity.BlockId,
+                ActivityId = newActivity.Id,
+                IsConfirmed = true,
+                ConfirmedAt = DateTime.Now,
+            });
+            await _db.SaveChangesAsync();
+        }
+
+        await tx.CommitAsync();
+
+        // Sin mail — acción administrativa excepcional, no una elección del
+        // asistente. Queda igual registrada en los logs del servidor.
+        _logger.LogWarning(
+            "[ADMIN OVERRIDE] {Admin} reasignó a {Target} a {Code} - {Title} (bloque {BlockId})",
+            req.AdminEmail, req.TargetEmail, newActivity.Code, newActivity.Title, newActivity.BlockId);
+
+        return Ok(new { message = "Reasignación realizada.", activityId = newActivity.Id, activityCode = newActivity.Code });
     }
 }

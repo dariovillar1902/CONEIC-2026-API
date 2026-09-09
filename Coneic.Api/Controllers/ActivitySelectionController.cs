@@ -36,8 +36,11 @@ public class ActivitySelectionController : ControllerBase
         ["comision-directiva@coneic2026.com.ar"] = new[] { ("Darío", "dvillar@frba.utn.edu.ar") },
     };
 
+    // Actualizado 2026-09-09: el PDF viejo en blob storage seguía teniendo
+    // AESA (visita que se sacó del listado). Ahora apunta directo al Drive
+    // con la propuesta definitiva vigente.
     private const string EppPdfUrl =
-        "https://coneic2026storage.blob.core.windows.net/comprobantes/misc/2026-09/listado-definitivo-actividades.pdf";
+        "https://drive.google.com/file/d/1YXycLwBieByabfsSTqBqJVfU3ifJ13-F/view?usp=drive_link";
 
     public ActivitySelectionController(ApplicationDbContext db, IEmailService email, ILogger<ActivitySelectionController> logger)
     {

@@ -465,4 +465,52 @@ public class ActivitySelectionController : ControllerBase
 
         return Ok(new { message = "Reasignación realizada.", activityId = newActivity.Id, activityCode = newActivity.Code });
     }
+
+    // ── Reenvío masivo del mail de confirmación (backfill puntual) ───────────
+    //
+    // El mail de "visita técnica confirmada" quedó restringido a
+    // PilotRecipients desde que se armó la feature — ningún asistente real lo
+    // recibió nunca. Este endpoint lo manda una vez a todo el mundo que ya
+    // tiene su visita técnica (bloque 1) confirmada, sin tocar esa restricción
+    // (que sigue rigiendo para confirmaciones futuras, hasta que se saque
+    // explícitamente). Solo directorio puede dispararlo.
+    public record ResendConfirmationsRequest(string AdminEmail);
+
+    [HttpPost("resend-confirmations")]
+    public async Task<IActionResult> ResendConfirmations([FromBody] ResendConfirmationsRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.AdminEmail) ||
+            !req.AdminEmail.Equals(DirectorioOverrideEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Esta acción está restringida a la cuenta de Directorio." });
+        }
+
+        var confirmed = await (
+            from s in _db.ActivitySelections
+            join a in _db.SelectableActivities on s.ActivityId equals a.Id
+            where s.BlockId == 1 && s.IsConfirmed
+            select new { s.UserEmail, a.Code, a.Title }
+        ).ToListAsync();
+
+        var emails = confirmed.Select(c => c.UserEmail.ToLower()).ToList();
+        var regsByEmail = await _db.Registrations
+            .Where(r => emails.Contains(r.Email.ToLower()))
+            .ToDictionaryAsync(r => r.Email.ToLower(), r => $"{r.Name} {r.Lastname}");
+
+        foreach (var c in confirmed)
+        {
+            var name = regsByEmail.TryGetValue(c.UserEmail.ToLower(), out var n) ? n : c.UserEmail;
+            // SendActivitySelectionConfirmedAsync ya loguea éxito/error y no
+            // propaga excepciones — los conteos reales de entrega se leen de
+            // los logs, no del resultado de este llamado.
+            await _email.SendActivitySelectionConfirmedAsync(c.UserEmail, name, c.Code, c.Title, EppPdfUrl);
+            await Task.Delay(100);
+        }
+
+        _logger.LogWarning(
+            "[BULK RESEND CONFIRMATIONS] {Admin} disparó el reenvío masivo a {Count} personas.",
+            req.AdminEmail, confirmed.Count);
+
+        return Ok(new { attempted = confirmed.Count });
+    }
 }

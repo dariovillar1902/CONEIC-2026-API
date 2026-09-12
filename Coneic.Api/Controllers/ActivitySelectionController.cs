@@ -13,6 +13,7 @@ public class ActivitySelectionController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IEmailService _email;
     private readonly ILogger<ActivitySelectionController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     // Única cuenta habilitada para reasignar manualmente la visita de otra
     // persona (excepción del directorio, fuera del flujo normal). No se
@@ -42,11 +43,13 @@ public class ActivitySelectionController : ControllerBase
     private const string EppPdfUrl =
         "https://drive.google.com/file/d/1YXycLwBieByabfsSTqBqJVfU3ifJ13-F/view?usp=drive_link";
 
-    public ActivitySelectionController(ApplicationDbContext db, IEmailService email, ILogger<ActivitySelectionController> logger)
+    public ActivitySelectionController(
+        ApplicationDbContext db, IEmailService email, ILogger<ActivitySelectionController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _email = email;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     // ── Listado de bloques + opciones + cupos + tu elección actual (draft o confirmada) ──
@@ -474,7 +477,7 @@ public class ActivitySelectionController : ControllerBase
     // tiene su visita técnica (bloque 1) confirmada, sin tocar esa restricción
     // (que sigue rigiendo para confirmaciones futuras, hasta que se saque
     // explícitamente). Solo directorio puede dispararlo.
-    public record ResendConfirmationsRequest(string AdminEmail);
+    public record ResendConfirmationsRequest(string AdminEmail, List<string>? ExcludeEmails);
 
     [HttpPost("resend-confirmations")]
     public async Task<IActionResult> ResendConfirmations([FromBody] ResendConfirmationsRequest req)
@@ -485,32 +488,58 @@ public class ActivitySelectionController : ControllerBase
             return StatusCode(403, new { message = "Esta acción está restringida a la cuenta de Directorio." });
         }
 
-        var confirmed = await (
+        var excludeSet = new HashSet<string>((req.ExcludeEmails ?? new()).Select(e => e.ToLower()));
+
+        var pending = await (
             from s in _db.ActivitySelections
             join a in _db.SelectableActivities on s.ActivityId equals a.Id
             where s.BlockId == 1 && s.IsConfirmed
             select new { s.UserEmail, a.Code, a.Title }
         ).ToListAsync();
+        var toSendCount = pending.Count(p => !excludeSet.Contains(p.UserEmail.ToLower()));
 
-        var emails = confirmed.Select(c => c.UserEmail.ToLower()).ToList();
-        var regsByEmail = await _db.Registrations
+        // Corre desacoplado del request HTTP: 700+ mails tardan más que
+        // cualquier timeout razonable de reverse proxy (ya nos pasó una vez —
+        // el envío sincrónico se cortó a mitad de camino cuando el proxy
+        // cerró la conexión). Usa su propio scope/DbContext porque el de
+        // este controller se dispone en cuanto el request HTTP termina.
+        _ = Task.Run(() => RunBulkResendAsync(req.AdminEmail, excludeSet));
+
+        return Accepted(new { message = "Reenvío iniciado en segundo plano.", toSend = toSendCount, excluded = excludeSet.Count });
+    }
+
+    private async Task RunBulkResendAsync(string adminEmail, HashSet<string> excludeEmails)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var confirmed = await (
+            from s in db.ActivitySelections
+            join a in db.SelectableActivities on s.ActivityId equals a.Id
+            where s.BlockId == 1 && s.IsConfirmed
+            select new { s.UserEmail, a.Code, a.Title }
+        ).ToListAsync();
+
+        var toSend = confirmed.Where(c => !excludeEmails.Contains(c.UserEmail.ToLower())).ToList();
+
+        var emails = toSend.Select(c => c.UserEmail.ToLower()).ToList();
+        var regsByEmail = await db.Registrations
             .Where(r => emails.Contains(r.Email.ToLower()))
             .ToDictionaryAsync(r => r.Email.ToLower(), r => $"{r.Name} {r.Lastname}");
 
-        foreach (var c in confirmed)
+        _logger.LogWarning(
+            "[BULK RESEND STARTED] {Admin} — {Count} a enviar ({Excluded} ya enviados antes, excluidos).",
+            adminEmail, toSend.Count, excludeEmails.Count);
+
+        foreach (var c in toSend)
         {
             var name = regsByEmail.TryGetValue(c.UserEmail.ToLower(), out var n) ? n : c.UserEmail;
-            // SendActivitySelectionConfirmedAsync ya loguea éxito/error y no
-            // propaga excepciones — los conteos reales de entrega se leen de
-            // los logs, no del resultado de este llamado.
+            // SendActivitySelectionConfirmedAsync ya loguea éxito/error puntual
+            // y no propaga excepciones.
             await _email.SendActivitySelectionConfirmedAsync(c.UserEmail, name, c.Code, c.Title, EppPdfUrl);
-            await Task.Delay(100);
+            await Task.Delay(150);
         }
 
-        _logger.LogWarning(
-            "[BULK RESEND CONFIRMATIONS] {Admin} disparó el reenvío masivo a {Count} personas.",
-            req.AdminEmail, confirmed.Count);
-
-        return Ok(new { attempted = confirmed.Count });
+        _logger.LogWarning("[BULK RESEND DONE] {Admin} — terminó de recorrer {Count} personas.", adminEmail, toSend.Count);
     }
 }

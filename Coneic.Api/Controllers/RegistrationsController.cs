@@ -39,6 +39,13 @@ namespace Coneic.Api.Controllers
 
         // ── Create ──────────────────────────────────────────────────────────────
 
+        // Comité Organizador: personas del equipo organizador (no de ninguna
+        // delegación universitaria). No pagan, no pasan por el circuito de
+        // habilitación manual del delegado -- se habilitan e ingresan solas
+        // apenas se registran. Por ahora no participan de la elección de
+        // actividades (visitas/talleres/simultáneas/solidarias).
+        private const string ComiteOrganizadorFaculty = "Comité Organizador";
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Registration registration)
         {
@@ -50,20 +57,52 @@ namespace Coneic.Api.Controllers
                 .Any(r => r.Email.Equals(registration.Email, StringComparison.OrdinalIgnoreCase)))
                 return Conflict(new { message = "Ya existe una inscripción con ese email." });
 
+            var isComiteOrganizador = string.Equals(
+                registration.Faculty, ComiteOrganizadorFaculty, StringComparison.OrdinalIgnoreCase);
+
             registration.CreatedAt = DateTime.Now;
-            registration.Status = "Pending";
-            registration.IsEnabled = false;
+
+            if (isComiteOrganizador)
+            {
+                registration.Status = "Paid";
+                registration.IsEnabled = true;
+                registration.PaymentCondition = "Pagó Completo";
+                registration.Price = 0;
+            }
+            else
+            {
+                registration.Status = "Pending";
+                registration.IsEnabled = false;
+            }
+
             _db.Registrations.Add(registration);
             _db.SaveChanges();
 
-            var delegation = DelegateDirectory.Lookup(registration.Faculty);
+            if (isComiteOrganizador)
+            {
+                var tempPassword = GeneratePassword();
+                CreateUserFromRegistration(registration.Email, tempPassword);
 
-            await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
-                ToEmail:    registration.Email,
-                ToName:     $"{registration.Name} {registration.Lastname}",
-                Faculty:    registration.Faculty ?? "",
-                Delegation: delegation
-            ));
+                await _email.SendRegistrationConfirmedAsync(
+                    toEmail:       registration.Email,
+                    toName:        $"{registration.Name} {registration.Lastname}",
+                    paymentDetail: "Comité Organizador — sin cargo",
+                    tempPassword:  tempPassword,
+                    loginUrl:      LoginUrl,
+                    amount:        0,
+                    stageName:     registration.StageName ?? "");
+            }
+            else
+            {
+                var delegation = DelegateDirectory.Lookup(registration.Faculty);
+
+                await _email.SendRegistrationReceivedAsync(new RegistrationEmailData(
+                    ToEmail:    registration.Email,
+                    ToName:     $"{registration.Name} {registration.Lastname}",
+                    Faculty:    registration.Faculty ?? "",
+                    Delegation: delegation
+                ));
+            }
 
             return CreatedAtAction(nameof(GetById), new { id = registration.Id }, new { registration });
         }

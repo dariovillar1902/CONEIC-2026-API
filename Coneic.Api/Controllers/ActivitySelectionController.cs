@@ -55,7 +55,7 @@ public class ActivitySelectionController : ControllerBase
     // ── Listado de bloques + opciones + cupos + tu elección actual (draft o confirmada) ──
 
     [HttpGet("blocks")]
-    public async Task<IActionResult> GetBlocks([FromQuery] string email)
+    public async Task<IActionResult> GetBlocks([FromQuery] string email, [FromQuery] bool includeInactive = false)
     {
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "Falta el email." });
@@ -64,7 +64,15 @@ public class ActivitySelectionController : ControllerBase
             .Where(s => s.UserEmail.ToLower() == email.ToLower())
             .ToListAsync();
 
-        var blocks = await _db.ActivityBlocks.Where(b => b.IsActive).OrderBy(b => b.Id).ToListAsync();
+        // includeInactive=true es para el catálogo del panel de admin (para
+        // poder asignar/reasignar Visita Técnica, que quedó IsActive=false
+        // una vez cerrada su ventana de elección, pero sigue siendo una
+        // actividad real a la que hay que poder anotar gente a mano). El
+        // flujo normal del asistente (sin este parámetro) sigue viendo solo
+        // los bloques activos, sin cambios.
+        var blocksQuery = _db.ActivityBlocks.AsQueryable();
+        if (!includeInactive) blocksQuery = blocksQuery.Where(b => b.IsActive);
+        var blocks = await blocksQuery.OrderBy(b => b.Id).ToListAsync();
         var activities = await _db.SelectableActivities.OrderBy(a => a.Code).ToListAsync();
 
         var result = blocks.Select(b => new

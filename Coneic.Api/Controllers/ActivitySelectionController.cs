@@ -31,15 +31,17 @@ public class ActivitySelectionController : ControllerBase
     // abre domingo 27/9 20:00 ART, cierra martes 29/9 23:59 ART. Antes de
     // abrir, Select/Unselect/Confirm quedan bloqueados; después de cerrar,
     // también (se resuelve lo que haya quedado sin elegir de forma manual,
-    // no automática — ver GetBlocks).
-    private static readonly TimeZoneInfo ArgentinaTz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Buenos_Aires");
-    private static readonly DateTime SelectionWindowOpensAt = new(2026, 9, 27, 20, 0, 0);
-    private static readonly DateTime SelectionWindowClosesAt = new(2026, 9, 29, 23, 59, 59);
+    // no automática — ver GetBlocks). Expresado directamente en UTC (ART es
+    // UTC-3 fijo, sin horario de verano) para no depender de
+    // TimeZoneInfo.FindSystemTimeZoneById, que puede fallar si el contenedor
+    // no tiene tzdata instalada (ya pasó: tumbaba GetBlocks con un 500).
+    private static readonly DateTime SelectionWindowOpensAt = new(2026, 9, 27, 23, 0, 0, DateTimeKind.Utc);       // 20:00 ART
+    private static readonly DateTime SelectionWindowClosesAt = new(2026, 9, 30, 2, 59, 59, DateTimeKind.Utc);     // 23:59:59 ART
 
     private static bool IsSelectionWindowOpen()
     {
-        var nowArt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ArgentinaTz);
-        return nowArt >= SelectionWindowOpensAt && nowArt <= SelectionWindowClosesAt;
+        var nowUtc = DateTime.UtcNow;
+        return nowUtc >= SelectionWindowOpensAt && nowUtc <= SelectionWindowClosesAt;
     }
 
     // Recorte temporal ("por ahora") mientras se prueba la feature con el

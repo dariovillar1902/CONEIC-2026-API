@@ -60,6 +60,17 @@ public class AcsEmailService : IEmailService
         await SendAsync(toEmail, toName, subject, html);
     }
 
+    public async Task SendAcademicActivitiesConfirmedAsync(
+        string toEmail, string toName,
+        string? tallerCode, string? tallerTitle,
+        string? simultaneaCode, string? simultaneaTitle,
+        string? solidariaCode, string? solidariaTitle)
+    {
+        var (subject, html) = EmailTemplates.AcademicActivitiesConfirmed(
+            toName, tallerCode, tallerTitle, simultaneaCode, simultaneaTitle, solidariaCode, solidariaTitle);
+        await SendAsync(toEmail, toName, subject, html);
+    }
+
     public async Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
     {
         var (subject, html) = EmailTemplates.PasswordReset(toName, toEmail, newPassword);

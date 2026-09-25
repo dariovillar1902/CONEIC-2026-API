@@ -21,6 +21,27 @@ public class ActivitySelectionController : ControllerBase
     // permiso de todos los admins.
     private const string DirectorioOverrideEmail = "directorio@coneic2026.com.ar";
 
+    // IDs fijos de los bloques de "Actividades Académicas parte 2" (ver Guía
+    // de Elección v1): el Taller elegido determina la Familia, que a su vez
+    // restringe qué Charla Simultánea se puede elegir. Solidaria es libre.
+    private const int TallerBlockId = 2;
+    private const int SimultaneaBlockId = 3;
+
+    // Ventana de elección (Guía de Elección de Actividades Académicas v1):
+    // abre domingo 27/9 20:00 ART, cierra martes 29/9 23:59 ART. Antes de
+    // abrir, Select/Unselect/Confirm quedan bloqueados; después de cerrar,
+    // también (se resuelve lo que haya quedado sin elegir de forma manual,
+    // no automática — ver GetBlocks).
+    private static readonly TimeZoneInfo ArgentinaTz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Buenos_Aires");
+    private static readonly DateTime SelectionWindowOpensAt = new(2026, 9, 27, 20, 0, 0);
+    private static readonly DateTime SelectionWindowClosesAt = new(2026, 9, 29, 23, 59, 59);
+
+    private static bool IsSelectionWindowOpen()
+    {
+        var nowArt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ArgentinaTz);
+        return nowArt >= SelectionWindowOpensAt && nowArt <= SelectionWindowClosesAt;
+    }
+
     // Recorte temporal ("por ahora") mientras se prueba la feature con el
     // equipo: solo estas cuentas admin reciben el mail de confirmación, y a
     // una casilla personal real (son cuentas institucionales compartidas).
@@ -92,11 +113,18 @@ public class ActivitySelectionController : ControllerBase
                 a.Description,
                 a.ImageUrl,
                 a.Capacity,
+                a.Family,
                 Taken = a.TakenCount,
             }),
         });
 
-        return Ok(result);
+        return Ok(new
+        {
+            WindowOpensAt = SelectionWindowOpensAt,
+            WindowClosesAt = SelectionWindowClosesAt,
+            IsWindowOpen = IsSelectionWindowOpen(),
+            Blocks = result,
+        });
     }
 
     // ── Tu estado general: ¿ya confirmaste definitivamente? ──────────────────
@@ -143,6 +171,9 @@ public class ActivitySelectionController : ControllerBase
         if (activity == null)
             return NotFound(new { message = "La actividad indicada no existe." });
 
+        if (activity.BlockId != 1 && !IsSelectionWindowOpen())
+            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+
         var alreadyConfirmed = await _db.ActivitySelections
             .AnyAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.IsConfirmed);
         if (alreadyConfirmed)
@@ -153,6 +184,21 @@ public class ActivitySelectionController : ControllerBase
 
         if (existing != null && existing.ActivityId == activity.Id)
             return Ok(new { message = "Ya tenías esta actividad seleccionada.", activityId = activity.Id, blockId = activity.BlockId });
+
+        // Charla Simultánea: solo se puede elegir una que pertenezca a la
+        // misma Familia que el Taller ya elegido (Guía de Elección v1).
+        ActivitySelection? tallerSelection = null;
+        if (activity.BlockId == SimultaneaBlockId)
+        {
+            tallerSelection = await _db.ActivitySelections
+                .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == TallerBlockId);
+            if (tallerSelection == null)
+                return BadRequest(new { message = "Primero tenés que elegir un Taller." });
+
+            var taller = await _db.SelectableActivities.FindAsync(tallerSelection.ActivityId);
+            if (taller?.Family == null || taller.Family != activity.Family)
+                return BadRequest(new { message = "Esta charla simultánea no pertenece a la familia de tu taller elegido." });
+        }
 
         using var tx = await _db.Database.BeginTransactionAsync();
 
@@ -176,6 +222,30 @@ public class ActivitySelectionController : ControllerBase
                 .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
             _db.ActivitySelections.Remove(existing);
             await _db.SaveChangesAsync();
+        }
+
+        // Taller: si ya había una Charla Simultánea elegida de otra Familia,
+        // queda inválida — se libera su cupo y se borra, para forzar a
+        // re-elegir dentro de la nueva Familia.
+        if (activity.BlockId == TallerBlockId)
+        {
+            var staleSimultanea = await (
+                from s in _db.ActivitySelections
+                join a in _db.SelectableActivities on s.ActivityId equals a.Id
+                where s.UserEmail.ToLower() == req.Email.ToLower()
+                    && s.BlockId == SimultaneaBlockId
+                    && a.Family != activity.Family
+                select s
+            ).FirstOrDefaultAsync();
+
+            if (staleSimultanea != null)
+            {
+                await _db.SelectableActivities
+                    .Where(a => a.Id == staleSimultanea.ActivityId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
+                _db.ActivitySelections.Remove(staleSimultanea);
+                await _db.SaveChangesAsync();
+            }
         }
 
         _db.ActivitySelections.Add(new ActivitySelection
@@ -202,6 +272,8 @@ public class ActivitySelectionController : ControllerBase
         if (existing == null) return NoContent();
         if (existing.IsConfirmed)
             return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
+        if (blockId != 1 && !IsSelectionWindowOpen())
+            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
 
         using var tx = await _db.Database.BeginTransactionAsync();
         await _db.SelectableActivities
@@ -209,6 +281,23 @@ public class ActivitySelectionController : ControllerBase
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
         _db.ActivitySelections.Remove(existing);
         await _db.SaveChangesAsync();
+
+        // Quitar el Taller también invalida la Charla Simultánea elegida
+        // (dependía de su Familia) — se libera su cupo y se borra.
+        if (blockId == TallerBlockId)
+        {
+            var dependentSimultanea = await _db.ActivitySelections
+                .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == email.ToLower() && s.BlockId == SimultaneaBlockId);
+            if (dependentSimultanea != null)
+            {
+                await _db.SelectableActivities
+                    .Where(a => a.Id == dependentSimultanea.ActivityId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
+                _db.ActivitySelections.Remove(dependentSimultanea);
+                await _db.SaveChangesAsync();
+            }
+        }
+
         await tx.CommitAsync();
 
         return NoContent();
@@ -342,6 +431,20 @@ public class ActivitySelectionController : ControllerBase
         if (missing.Count > 0)
             return BadRequest(new { message = "Todavía te falta elegir una actividad en algún bloque.", missingBlockIds = missing });
 
+        // Defensa extra: el acople Taller↔Familia↔Simultánea ya se valida en
+        // Select/Unselect, pero se re-chequea acá por las dudas antes de
+        // volver la selección irreversible.
+        var tallerSel = mySelections.FirstOrDefault(s => s.BlockId == TallerBlockId);
+        var simultaneaSel = mySelections.FirstOrDefault(s => s.BlockId == SimultaneaBlockId);
+        if (tallerSel != null && simultaneaSel != null)
+        {
+            var families = await _db.SelectableActivities
+                .Where(a => a.Id == tallerSel.ActivityId || a.Id == simultaneaSel.ActivityId)
+                .ToDictionaryAsync(a => a.Id, a => a.Family);
+            if (families[tallerSel.ActivityId] != families[simultaneaSel.ActivityId])
+                return BadRequest(new { message = "Tu charla simultánea no corresponde a la familia de tu taller — volvé a elegir." });
+        }
+
         var now = DateTime.Now;
         foreach (var s in mySelections)
         {
@@ -351,6 +454,7 @@ public class ActivitySelectionController : ControllerBase
         await _db.SaveChangesAsync();
 
         await SendPilotConfirmationEmailAsync(req.Email, mySelections);
+        await SendAcademicActivitiesConfirmationEmailAsync(req.Email, mySelections);
 
         return Ok(new { message = "Selección confirmada.", confirmedAt = now });
     }
@@ -381,6 +485,43 @@ public class ActivitySelectionController : ControllerBase
             {
                 // no interrumpir la confirmación por un fallo de envío puntual
             }
+        }
+    }
+
+    // Mail de confirmación de Taller + Charla Simultánea + Solidaria — a
+    // diferencia de SendPilotConfirmationEmailAsync (Visita Técnica, todavía
+    // restringido a PilotRecipients), este sale para cualquier asistente que
+    // confirme, porque es la feature ya en producción (acción del 2026-09-24:
+    // "Configurar Confirmación").
+    private async Task SendAcademicActivitiesConfirmationEmailAsync(string userEmail, List<ActivitySelection> selections)
+    {
+        var chosen = await (
+            from s in _db.ActivitySelections.Where(x => selections.Select(sel => sel.Id).Contains(x.Id))
+            join a in _db.SelectableActivities on s.ActivityId equals a.Id
+            where s.BlockId == TallerBlockId || s.BlockId == SimultaneaBlockId || s.BlockId == 4
+            select new { s.BlockId, a.Code, a.Title }
+        ).ToListAsync();
+
+        var taller = chosen.FirstOrDefault(c => c.BlockId == TallerBlockId);
+        var simultanea = chosen.FirstOrDefault(c => c.BlockId == SimultaneaBlockId);
+        var solidaria = chosen.FirstOrDefault(c => c.BlockId == 4);
+        if (taller == null && simultanea == null && solidaria == null) return;
+
+        var registration = await _db.Registrations
+            .FirstOrDefaultAsync(r => r.Email.ToLower() == userEmail.ToLower());
+        var name = registration != null ? $"{registration.Name} {registration.Lastname}" : userEmail;
+
+        try
+        {
+            await _email.SendAcademicActivitiesConfirmedAsync(
+                userEmail, name,
+                taller?.Code, taller?.Title,
+                simultanea?.Code, simultanea?.Title,
+                solidaria?.Code, solidaria?.Title);
+        }
+        catch
+        {
+            // no interrumpir la confirmación por un fallo de envío puntual
         }
     }
 

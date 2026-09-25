@@ -18,6 +18,14 @@ public class SelectableActivity
     public int Capacity { get; set; }
 
     /// <summary>
+    /// Familia que empareja Talleres (bloque "Taller") con las Charlas
+    /// Simultáneas (bloque "Simultanea") que se habilitan al elegirlos —
+    /// ver "Guía de Elección de Actividades Académicas". Null para
+    /// actividades que no dependen de una familia (Visita Técnica, Solidaria).
+    /// </summary>
+    public int? Family { get; set; }
+
+    /// <summary>
     /// Denormalized running count of active selections, updated via a single
     /// atomic UPDATE ... WHERE TakenCount &lt; Capacity (see
     /// ActivitySelectionController). Avoids a separate COUNT query and — more

@@ -474,6 +474,56 @@ internal static class EmailTemplates
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 5b. Confirmación de Taller + Charla Simultánea + Solidaria
+    // ═══════════════════════════════════════════════════════════════════════════
+    public static (string Subject, string Html) AcademicActivitiesConfirmed(
+        string toName,
+        string? tallerCode, string? tallerTitle,
+        string? simultaneaCode, string? simultaneaTitle,
+        string? solidariaCode, string? solidariaTitle)
+    {
+        var subject = "Tus actividades académicas elegidas – CONEIC XVIII";
+        var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Actividades académicas confirmadas");
+
+        static string Row(string label, string? code, string? title) => code == null ? "" : $"""
+            <tr>
+              <td style="padding:10px 0;border-top:1px solid #eee;">
+                <p style="margin:0 0 2px;font-size:11px;font-weight:bold;letter-spacing:1px;
+                          text-transform:uppercase;color:{ColorGold};">{label}</p>
+                <p style="margin:0;font-size:15px;color:{ColorText};"><strong>{code}</strong> — {title}</p>
+              </td>
+            </tr>
+            """;
+
+        var rows = Row("Taller", tallerCode, tallerTitle)
+            + Row("Charla Simultánea", simultaneaCode, simultaneaTitle)
+            + Row("Actividad de Compromiso Social y Medio Ambiente", solidariaCode, solidariaTitle);
+
+        var body = $"""
+            <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
+              Hola, <strong>{toName}</strong>
+            </p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
+              Quedó registrada tu selección definitiva de actividades académicas:
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 24px;">
+              {rows}
+            </table>
+            {WarningBox($"""
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
+                Esta selección ya no se puede modificar. Ante cualquier duda o inconveniente,
+                canalizalo a través de tu delegado/a.
+              </p>
+            """)}
+            <p style="margin:0;font-size:15px;line-height:1.75;color:{BgHeader};font-weight:bold;">
+              ¡Nos vemos en octubre!
+            </p>
+            """;
+
+        return (subject, Wrap("Actividades académicas confirmadas — CONEIC XVIII", banner, body));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 6. Reseteo de contraseña (flujo autoservicio "Olvidé mi contraseña")
     // ═══════════════════════════════════════════════════════════════════════════
     public static (string Subject, string Html) PasswordReset(string toName, string toEmail, string newPassword)

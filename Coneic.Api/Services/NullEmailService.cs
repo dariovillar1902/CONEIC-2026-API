@@ -53,6 +53,18 @@ public class NullEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendAcademicActivitiesConfirmedAsync(
+        string toEmail, string toName,
+        string? tallerCode, string? tallerTitle,
+        string? simultaneaCode, string? simultaneaTitle,
+        string? solidariaCode, string? solidariaTitle)
+    {
+        _logger.LogInformation(
+            "[DEV EMAIL] AcademicActivitiesConfirmed → {Email} ({Name}) | Taller: {TallerCode} - {TallerTitle} | Simultánea: {SimultaneaCode} - {SimultaneaTitle} | Solidaria: {SolidariaCode} - {SolidariaTitle}",
+            toEmail, toName, tallerCode, tallerTitle, simultaneaCode, simultaneaTitle, solidariaCode, solidariaTitle);
+        return Task.CompletedTask;
+    }
+
     public Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
     {
         _logger.LogInformation(

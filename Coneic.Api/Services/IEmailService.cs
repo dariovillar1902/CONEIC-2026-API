@@ -21,6 +21,13 @@ public interface IEmailService
     /// <summary>Envía el email de visita técnica confirmada (elección definitiva de actividades).</summary>
     Task SendActivitySelectionConfirmedAsync(string toEmail, string toName, string activityCode, string activityTitle, string pdfUrl);
 
+    /// <summary>Envía el email de Taller + Charla Simultánea + Solidaria confirmados (elección definitiva).</summary>
+    Task SendAcademicActivitiesConfirmedAsync(
+        string toEmail, string toName,
+        string? tallerCode, string? tallerTitle,
+        string? simultaneaCode, string? simultaneaTitle,
+        string? solidariaCode, string? solidariaTitle);
+
     /// <summary>Envía la nueva contraseña generada por el flujo de "olvidé mi contraseña".</summary>
     Task SendPasswordResetAsync(string toEmail, string toName, string newPassword);
 }

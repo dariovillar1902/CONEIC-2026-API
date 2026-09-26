@@ -262,6 +262,35 @@ namespace Coneic.Api.Controllers
             return Ok(reg);
         }
 
+        // ── Fecha de nacimiento (pedido por seguros) ──────────────────────────────
+        //
+        // Paso obligatorio antes de entrar a Elección de Actividades para
+        // quien todavía no la cargó (el formulario de inscripción original no
+        // la pedía). Por email en vez de id porque lo llama el propio
+        // asistente logueado, que no conoce su Registration.Id.
+
+        [HttpGet("by-email/{email}")]
+        public IActionResult GetByEmail(string email)
+        {
+            var reg = _db.Registrations.AsEnumerable()
+                .FirstOrDefault(r => r.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            return reg == null ? NotFound() : Ok(reg);
+        }
+
+        public record UpdateBirthDateDto(DateTime BirthDate);
+
+        [HttpPatch("by-email/{email}/birthdate")]
+        public IActionResult UpdateBirthDate(string email, [FromBody] UpdateBirthDateDto dto)
+        {
+            var reg = _db.Registrations.AsEnumerable()
+                .FirstOrDefault(r => r.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            if (reg == null) return NotFound();
+
+            reg.BirthDate = dto.BirthDate;
+            _db.SaveChanges();
+            return Ok(reg);
+        }
+
         [HttpPut("{id}")]
         public IActionResult Update(int id, [FromBody] Registration updated)
         {

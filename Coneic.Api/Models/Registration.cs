@@ -15,7 +15,13 @@ namespace Coneic.Api.Models
         
         [Required]
         public string Dni { get; set; } = string.Empty;
-        
+
+        // Pedido por seguros (auditorio y visitas) — no se recolectaba en el
+        // formulario original, así que se completa después vía un paso
+        // obligatorio antes de la Elección de Actividades (ver
+        // RegistrationsController.UpdateBirthDate).
+        public DateTime? BirthDate { get; set; }
+
         [Required]
         public string Phone { get; set; } = string.Empty;
 

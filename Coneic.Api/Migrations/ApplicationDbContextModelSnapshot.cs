@@ -522,6 +522,9 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("AttendanceConfidence")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("BirthDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BloodType")
                         .HasColumnType("TEXT");
 

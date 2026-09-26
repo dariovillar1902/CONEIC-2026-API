@@ -27,16 +27,19 @@ public class ActivitySelectionController : ControllerBase
     private const int TallerBlockId = 2;
     private const int SimultaneaBlockId = 3;
 
-    // Ventana de elección (Guía de Elección de Actividades Académicas v1):
-    // abre domingo 27/9 20:00 ART, cierra martes 29/9 23:59 ART. Antes de
-    // abrir, Select/Unselect/Confirm quedan bloqueados; después de cerrar,
-    // también (se resuelve lo que haya quedado sin elegir de forma manual,
-    // no automática — ver GetBlocks). Expresado directamente en UTC (ART es
-    // UTC-3 fijo, sin horario de verano) para no depender de
+    // Ventana de elección (Guía de Elección de Actividades Académicas v1).
+    // Postergada 2026-09-25: no abre el 27/9 como decía la guía original —
+    // muchas actividades que iban a ser en Medrano terminan siendo en
+    // Campus, así que se corrieron fechas. Placeholder de apertura 13/10
+    // hasta que se defina el día real (avisar cuando esté confirmado).
+    // Antes de abrir, Select/Unselect/Confirm quedan bloqueados; después de
+    // cerrar, también (se resuelve lo que haya quedado sin elegir de forma
+    // manual, no automática — ver GetBlocks). Expresado directamente en UTC
+    // (ART es UTC-3 fijo, sin horario de verano) para no depender de
     // TimeZoneInfo.FindSystemTimeZoneById, que puede fallar si el contenedor
     // no tiene tzdata instalada (ya pasó: tumbaba GetBlocks con un 500).
-    private static readonly DateTime SelectionWindowOpensAt = new(2026, 9, 27, 23, 0, 0, DateTimeKind.Utc);       // 20:00 ART
-    private static readonly DateTime SelectionWindowClosesAt = new(2026, 9, 30, 2, 59, 59, DateTimeKind.Utc);     // 23:59:59 ART
+    private static readonly DateTime SelectionWindowOpensAt = new(2026, 10, 13, 3, 0, 0, DateTimeKind.Utc);       // 00:00 ART, PLACEHOLDER
+    private static readonly DateTime SelectionWindowClosesAt = new(2026, 10, 16, 2, 59, 59, DateTimeKind.Utc);    // 23:59:59 ART 15/10, PLACEHOLDER
 
     private static bool IsSelectionWindowOpen()
     {

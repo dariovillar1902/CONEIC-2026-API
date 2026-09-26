@@ -163,13 +163,13 @@ namespace Coneic.Api.Migrations
                 values: new object[,]
                 {
                     { 600, 4, null, "3.01", 100,
-                      "Fundación Marolio + Subcomisiones Académica y Reglamentos (ANEIC)",
-                      "UTN BA - Campus",
-                      "Responsabilidad social: del compromiso a la acción (Lic. Nutricionista Belen Castiñeira, Fundación Marolio) — su experiencia y trabajo territorial vinculado a la responsabilidad social. · Construir con responsabilidad: gestión del programa de seguridad y legajo técnico en obra (Subcomisión Académica + Subcomisión Reglamentos, ANEIC) — gestión preventiva en obradores, marco normativo y Legajo Técnico de Obra." },
+                      "Responsabilidad social: del compromiso a la acción",
+                      "Lic. Nutricionista Belen Castiñeira — Fundación Marolio — UTN BA - Campus",
+                      "Fundación Marolio compartirá su experiencia y trabajo territorial para acercar a los estudiantes al concepto de responsabilidad social y mostrar cómo, desde la profesión y el conocimiento, también se puede generar impacto y transformar realidades." },
                     { 601, 4, null, "3.02", 80,
-                      "Fundación Techo + Unión Civil / Subco. Incumbencias (ANEIC)",
+                      "Fundación Techo + Unión Civil / Subcomisiones de Incumbencias y Web y Multimedia (ANEIC)",
                       "UTN BA - Campus",
-                      "Conocé Techo (Adriana Marsan, Fundación Techo) — qué hace la organización y por qué trabaja en barrios populares. · El que firma pierde (Unión Civil + Subcomisión de Incumbencias, ANEIC) — incumbencias profesionales del Ingeniero Civil: qué podés firmar y cuándo." },
+                      "Conocé Techo (Adriana Marsan, Fundación Techo) — qué hace la organización y por qué trabaja en barrios populares. · El que firma pierde (Unión Civil + Subcomisiones: de Incumbencias, y Web y Multimedia, ANEIC) — incumbencias profesionales del Ingeniero Civil: qué podés firmar y cuándo." },
                     { 602, 4, null, "3.03", 100,
                       "Ingeniería Sin Fronteras",
                       "Adriana Bertola y Nico Delgado — UTN BA - Campus",

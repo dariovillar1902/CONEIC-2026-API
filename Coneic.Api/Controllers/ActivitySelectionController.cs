@@ -47,6 +47,18 @@ public class ActivitySelectionController : ControllerBase
         return nowUtc >= SelectionWindowOpensAt && nowUtc <= SelectionWindowClosesAt;
     }
 
+    // Pedido del equipo (WhatsApp, 2026-09-27): habilitar la elección HOY
+    // para perfiles admin (para poder probarla antes de la apertura real),
+    // sin tocar la ventana real que rige para el resto. Por rol, no por
+    // lista de emails — cualquier cuenta admin actual o futura queda
+    // cubierta automáticamente.
+    private async Task<bool> IsAdminEmailAsync(string email)
+    {
+        var user = await _db.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+        return user?.Role == "admin";
+    }
+
     // Recorte temporal ("por ahora") mientras se prueba la feature con el
     // equipo: solo estas cuentas admin reciben el mail de confirmación, y a
     // una casilla personal real (son cuentas institucionales compartidas).
@@ -176,13 +188,16 @@ public class ActivitySelectionController : ControllerBase
         if (activity == null)
             return NotFound(new { message = "La actividad indicada no existe." });
 
-        if (activity.BlockId != 1 && !IsSelectionWindowOpen())
+        if (activity.BlockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(req.Email))
             return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
 
-        var alreadyConfirmed = await _db.ActivitySelections
-            .AnyAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.IsConfirmed);
-        if (alreadyConfirmed)
-            return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
+        // La confirmación es individual por bloque (no todo-o-nada): un
+        // Taller ya confirmado no se puede tocar, pero eso no bloquea elegir
+        // o cambiar Simultánea/Solidaria si esos bloques siguen en borrador.
+        var blockAlreadyConfirmed = await _db.ActivitySelections
+            .AnyAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == activity.BlockId && s.IsConfirmed);
+        if (blockAlreadyConfirmed)
+            return BadRequest(new { message = "Ya confirmaste definitivamente esta categoría — no se puede modificar." });
 
         var existing = await _db.ActivitySelections
             .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == activity.BlockId);
@@ -231,7 +246,13 @@ public class ActivitySelectionController : ControllerBase
 
         // Taller: si ya había una Charla Simultánea elegida de otra Familia,
         // queda inválida — se libera su cupo y se borra, para forzar a
-        // re-elegir dentro de la nueva Familia.
+        // re-elegir dentro de la nueva Familia. Si esa Simultánea ya estaba
+        // confirmada definitivamente, no se toca — se corta la operación
+        // antes (no debería llegar acá: Simultánea confirmada implica que
+        // Confirm ya validó el acople de familias, así que el Taller nunca
+        // debería poder cambiar a esta altura salvo un caso raro que
+        // preferimos rechazar explícitamente antes que corromper un dato ya
+        // confirmado).
         if (activity.BlockId == TallerBlockId)
         {
             var staleSimultanea = await (
@@ -245,6 +266,15 @@ public class ActivitySelectionController : ControllerBase
 
             if (staleSimultanea != null)
             {
+                if (staleSimultanea.IsConfirmed)
+                {
+                    // El rollback deshace también la reserva de cupo que
+                    // acabamos de hacer sobre `activity` más arriba, en la
+                    // misma transacción — no hace falta revertirla a mano.
+                    await tx.RollbackAsync();
+                    return BadRequest(new { message = "Ya confirmaste tu charla simultánea — no se puede cambiar a un taller de otra familia." });
+                }
+
                 await _db.SelectableActivities
                     .Where(a => a.Id == staleSimultanea.ActivityId)
                     .ExecuteUpdateAsync(s => s.SetProperty(a => a.TakenCount, a => a.TakenCount - 1));
@@ -277,8 +307,20 @@ public class ActivitySelectionController : ControllerBase
         if (existing == null) return NoContent();
         if (existing.IsConfirmed)
             return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
-        if (blockId != 1 && !IsSelectionWindowOpen())
+        if (blockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(email))
             return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+
+        // Quitar el Taller invalida la Charla Simultánea elegida (dependía de
+        // su Familia) — pero si esa Simultánea ya está confirmada
+        // definitivamente, no la tocamos: se corta la operación en vez de
+        // borrar un dato ya confirmado.
+        if (blockId == TallerBlockId)
+        {
+            var dependentSimultanea = await _db.ActivitySelections
+                .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == email.ToLower() && s.BlockId == SimultaneaBlockId);
+            if (dependentSimultanea?.IsConfirmed == true)
+                return BadRequest(new { message = "Ya confirmaste tu charla simultánea — no se puede quitar el taller." });
+        }
 
         using var tx = await _db.Database.BeginTransactionAsync();
         await _db.SelectableActivities
@@ -287,8 +329,6 @@ public class ActivitySelectionController : ControllerBase
         _db.ActivitySelections.Remove(existing);
         await _db.SaveChangesAsync();
 
-        // Quitar el Taller también invalida la Charla Simultánea elegida
-        // (dependía de su Familia) — se libera su cupo y se borra.
         if (blockId == TallerBlockId)
         {
             var dependentSimultanea = await _db.ActivitySelections
@@ -414,9 +454,16 @@ public class ActivitySelectionController : ControllerBase
         public DateTime? ConfirmedAt { get; set; }
     }
 
-    // ── Confirmación definitiva (irreversible) ───────────────────────────────
+    // ── Confirmación definitiva (irreversible, por bloque) ───────────────────
+    //
+    // Cada categoría (Taller / Simultánea / Solidaria / Visita Técnica) se
+    // confirma de forma independiente — no es "todo o nada". Pedido del
+    // equipo (WhatsApp, 2026-09-27): "hacer que la confirmación sea en cada
+    // una de las actividades, selección definitiva individual" — para que un
+    // problema puntual en una categoría (cupo agotado, indecisión) no
+    // bloquee confirmar las demás.
 
-    public record ConfirmRequest(string Email);
+    public record ConfirmRequest(string Email, int BlockId);
 
     [HttpPost("confirm")]
     public async Task<IActionResult> Confirm([FromBody] ConfirmRequest req)
@@ -424,60 +471,56 @@ public class ActivitySelectionController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Email))
             return BadRequest(new { message = "Falta el email." });
 
-        var mySelections = await _db.ActivitySelections
-            .Where(s => s.UserEmail.ToLower() == req.Email.ToLower())
-            .ToListAsync();
+        var selection = await _db.ActivitySelections
+            .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == req.BlockId);
 
-        if (mySelections.Any(s => s.IsConfirmed))
-            return BadRequest(new { message = "Ya habías confirmado tu selección definitiva." });
-
-        var allBlockIds = await _db.ActivityBlocks.Where(b => b.IsActive).Select(b => b.Id).ToListAsync();
-        var missing = allBlockIds.Except(mySelections.Select(s => s.BlockId)).ToList();
-        if (missing.Count > 0)
-            return BadRequest(new { message = "Todavía te falta elegir una actividad en algún bloque.", missingBlockIds = missing });
+        if (selection == null)
+            return BadRequest(new { message = "Todavía no elegiste una opción en esta categoría." });
+        if (selection.IsConfirmed)
+            return BadRequest(new { message = "Ya habías confirmado esta categoría." });
 
         // Defensa extra: el acople Taller↔Familia↔Simultánea ya se valida en
-        // Select/Unselect, pero se re-chequea acá por las dudas antes de
-        // volver la selección irreversible.
-        var tallerSel = mySelections.FirstOrDefault(s => s.BlockId == TallerBlockId);
-        var simultaneaSel = mySelections.FirstOrDefault(s => s.BlockId == SimultaneaBlockId);
-        if (tallerSel != null && simultaneaSel != null)
+        // Select, pero se re-chequea acá por las dudas antes de volver la
+        // selección irreversible.
+        if (req.BlockId == TallerBlockId || req.BlockId == SimultaneaBlockId)
         {
-            var families = await _db.SelectableActivities
-                .Where(a => a.Id == tallerSel.ActivityId || a.Id == simultaneaSel.ActivityId)
-                .ToDictionaryAsync(a => a.Id, a => a.Family);
-            if (families[tallerSel.ActivityId] != families[simultaneaSel.ActivityId])
-                return BadRequest(new { message = "Tu charla simultánea no corresponde a la familia de tu taller — volvé a elegir." });
+            var otherBlockId = req.BlockId == TallerBlockId ? SimultaneaBlockId : TallerBlockId;
+            var otherSelection = await _db.ActivitySelections
+                .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == req.Email.ToLower() && s.BlockId == otherBlockId);
+            if (otherSelection != null)
+            {
+                var families = await _db.SelectableActivities
+                    .Where(a => a.Id == selection.ActivityId || a.Id == otherSelection.ActivityId)
+                    .ToDictionaryAsync(a => a.Id, a => a.Family);
+                if (families[selection.ActivityId] != families[otherSelection.ActivityId])
+                    return BadRequest(new { message = "Tu charla simultánea no corresponde a la familia de tu taller — volvé a elegir." });
+            }
         }
 
         var now = DateTime.Now;
-        foreach (var s in mySelections)
-        {
-            s.IsConfirmed = true;
-            s.ConfirmedAt = now;
-        }
+        selection.IsConfirmed = true;
+        selection.ConfirmedAt = now;
         await _db.SaveChangesAsync();
 
-        await SendPilotConfirmationEmailAsync(req.Email, mySelections);
-        await SendAcademicActivitiesConfirmationEmailAsync(req.Email, mySelections);
+        await SendPilotConfirmationEmailAsync(req.Email, selection);
+        await SendAcademicActivitiesConfirmationEmailIfCompleteAsync(req.Email);
 
-        return Ok(new { message = "Selección confirmada.", confirmedAt = now });
+        return Ok(new { message = "Categoría confirmada.", confirmedAt = now, blockId = req.BlockId });
     }
 
     // Envía el mail de "visita técnica elegida" solo si la cuenta que confirmó
-    // está en la lista piloto (ver PilotRecipients). No falla la confirmación
-    // si el envío tiene algún problema — la selección ya quedó guardada.
-    private async Task SendPilotConfirmationEmailAsync(string userEmail, List<ActivitySelection> selections)
+    // está en la lista piloto (ver PilotRecipients) y lo que confirmó fue
+    // justo el bloque de Visita Técnica. No falla la confirmación si el
+    // envío tiene algún problema — la selección ya quedó guardada.
+    private async Task SendPilotConfirmationEmailAsync(string userEmail, ActivitySelection confirmedSelection)
     {
+        if (confirmedSelection.BlockId != 1) return;
         if (!PilotRecipients.TryGetValue(userEmail.ToLower(), out var recipients)) return;
 
-        var visita = await (
-            from s in _db.ActivitySelections.Where(x => selections.Select(sel => sel.Id).Contains(x.Id))
-            join a in _db.SelectableActivities on s.ActivityId equals a.Id
-            where a.BlockId == 1 // bloque "Visita Técnica"
-            select new { a.Code, a.Title }
-        ).FirstOrDefaultAsync();
-
+        var visita = await _db.SelectableActivities
+            .Where(a => a.Id == confirmedSelection.ActivityId)
+            .Select(a => new { a.Code, a.Title })
+            .FirstOrDefaultAsync();
         if (visita == null) return;
 
         foreach (var (name, email) in recipients)
@@ -497,20 +540,26 @@ public class ActivitySelectionController : ControllerBase
     // diferencia de SendPilotConfirmationEmailAsync (Visita Técnica, todavía
     // restringido a PilotRecipients), este sale para cualquier asistente que
     // confirme, porque es la feature ya en producción (acción del 2026-09-24:
-    // "Configurar Confirmación").
-    private async Task SendAcademicActivitiesConfirmationEmailAsync(string userEmail, List<ActivitySelection> selections)
+    // "Configurar Confirmación"). Como ahora cada bloque se confirma por
+    // separado, este mail (que junta los 3) solo sale una vez que las 3
+    // categorías quedaron confirmadas — no en cada confirmación individual.
+    private async Task SendAcademicActivitiesConfirmationEmailIfCompleteAsync(string userEmail)
     {
         var chosen = await (
-            from s in _db.ActivitySelections.Where(x => selections.Select(sel => sel.Id).Contains(x.Id))
+            from s in _db.ActivitySelections
             join a in _db.SelectableActivities on s.ActivityId equals a.Id
-            where s.BlockId == TallerBlockId || s.BlockId == SimultaneaBlockId || s.BlockId == 4
-            select new { s.BlockId, a.Code, a.Title }
+            where s.UserEmail.ToLower() == userEmail.ToLower()
+                && (s.BlockId == TallerBlockId || s.BlockId == SimultaneaBlockId || s.BlockId == 4)
+            select new { s.BlockId, s.IsConfirmed, a.Code, a.Title }
         ).ToListAsync();
 
         var taller = chosen.FirstOrDefault(c => c.BlockId == TallerBlockId);
         var simultanea = chosen.FirstOrDefault(c => c.BlockId == SimultaneaBlockId);
         var solidaria = chosen.FirstOrDefault(c => c.BlockId == 4);
-        if (taller == null && simultanea == null && solidaria == null) return;
+
+        // Todavía falta confirmar alguna de las 3 — no se manda nada todavía.
+        if (taller is not { IsConfirmed: true } || simultanea is not { IsConfirmed: true } || solidaria is not { IsConfirmed: true })
+            return;
 
         var registration = await _db.Registrations
             .FirstOrDefaultAsync(r => r.Email.ToLower() == userEmail.ToLower());
@@ -520,9 +569,9 @@ public class ActivitySelectionController : ControllerBase
         {
             await _email.SendAcademicActivitiesConfirmedAsync(
                 userEmail, name,
-                taller?.Code, taller?.Title,
-                simultanea?.Code, simultanea?.Title,
-                solidaria?.Code, solidaria?.Title);
+                taller.Code, taller.Title,
+                simultanea.Code, simultanea.Title,
+                solidaria.Code, solidaria.Title);
         }
         catch
         {

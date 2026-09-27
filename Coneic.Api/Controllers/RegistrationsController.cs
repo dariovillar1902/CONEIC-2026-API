@@ -300,6 +300,7 @@ namespace Coneic.Api.Controllers
             reg.Name                  = updated.Name;
             reg.Lastname              = updated.Lastname;
             reg.Dni                   = updated.Dni;
+            reg.BirthDate             = updated.BirthDate;
             reg.Phone                 = updated.Phone;
             reg.Email                 = updated.Email;
             reg.Faculty               = updated.Faculty;
@@ -527,7 +528,7 @@ namespace Coneic.Api.Controllers
 
             var headers = new[]
             {
-                "ID", "Apellido", "Nombre", "DNI", "Teléfono", "Email", "Delegación",
+                "ID", "Apellido", "Nombre", "DNI", "Fecha de Nacimiento", "Teléfono", "Email", "Delegación",
                 "Grupo Sanguíneo", "Afecciones", "Restricciones Alimentarias", "Contacto Emergencia", "Tel. Emergencia",
                 "Etapa", "Precio", "Habilitado", "Condición de Pago",
                 "Monto Pagado", "Monto Pendiente", "Observaciones", "Fecha Inscripción", "Desafío Barreras",
@@ -550,33 +551,34 @@ namespace Coneic.Api.Controllers
                 ws.Cell(row, 2).Value = r.Lastname;
                 ws.Cell(row, 3).Value = r.Name;
                 ws.Cell(row, 4).Value = r.Dni;
-                ws.Cell(row, 5).Value = r.Phone;
-                ws.Cell(row, 6).Value = r.Email;
-                ws.Cell(row, 7).Value = r.Faculty;
-                ws.Cell(row, 8).Value = r.BloodType ?? "";
-                ws.Cell(row, 9).Value = r.MedicalConditions ?? "";
-                ws.Cell(row, 10).Value = r.DietaryRestrictions ?? "";
-                ws.Cell(row, 11).Value = r.EmergencyContactName;
-                ws.Cell(row, 12).Value = r.EmergencyContactPhone;
-                ws.Cell(row, 13).Value = r.StageName;
-                ws.Cell(row, 14).Value = (double)r.Price;
-                ws.Cell(row, 15).Value = r.IsEnabled ? "Sí" : "No";
-                ws.Cell(row, 16).Value = r.PaymentCondition ?? "Sin asignar";
-                ws.Cell(row, 17).Value = (double)r.AmountPaid;
-                ws.Cell(row, 18).Value = (double)r.AmountPending;
-                ws.Cell(row, 19).Value = r.Observations ?? "";
-                ws.Cell(row, 20).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
-                ws.Cell(row, 21).Value = r.InterestedInMaccaferri ? "Sí" : "No";
+                ws.Cell(row, 5).Value = r.BirthDate.HasValue ? r.BirthDate.Value.ToString("dd/MM/yyyy") : "";
+                ws.Cell(row, 6).Value = r.Phone;
+                ws.Cell(row, 7).Value = r.Email;
+                ws.Cell(row, 8).Value = r.Faculty;
+                ws.Cell(row, 9).Value = r.BloodType ?? "";
+                ws.Cell(row, 10).Value = r.MedicalConditions ?? "";
+                ws.Cell(row, 11).Value = r.DietaryRestrictions ?? "";
+                ws.Cell(row, 12).Value = r.EmergencyContactName;
+                ws.Cell(row, 13).Value = r.EmergencyContactPhone;
+                ws.Cell(row, 14).Value = r.StageName;
+                ws.Cell(row, 15).Value = (double)r.Price;
+                ws.Cell(row, 16).Value = r.IsEnabled ? "Sí" : "No";
+                ws.Cell(row, 17).Value = r.PaymentCondition ?? "Sin asignar";
+                ws.Cell(row, 18).Value = (double)r.AmountPaid;
+                ws.Cell(row, 19).Value = (double)r.AmountPending;
+                ws.Cell(row, 20).Value = r.Observations ?? "";
+                ws.Cell(row, 21).Value = r.CreatedAt.ToString("dd/MM/yyyy HH:mm");
+                ws.Cell(row, 22).Value = r.InterestedInMaccaferri ? "Sí" : "No";
 
                 if (activityLookup.TryGetValue(r.Email.ToLower(), out var activity))
                 {
-                    ws.Cell(row, 22).Value = $"{activity.Code} — {activity.Title}";
-                    ws.Cell(row, 23).Value = activity.IsConfirmed ? "Confirmada" : "Borrador";
+                    ws.Cell(row, 23).Value = $"{activity.Code} — {activity.Title}";
+                    ws.Cell(row, 24).Value = activity.IsConfirmed ? "Confirmada" : "Borrador";
                 }
                 else
                 {
-                    ws.Cell(row, 22).Value = "Sin elegir";
-                    ws.Cell(row, 23).Value = "";
+                    ws.Cell(row, 23).Value = "Sin elegir";
+                    ws.Cell(row, 24).Value = "";
                 }
                 row++;
             }

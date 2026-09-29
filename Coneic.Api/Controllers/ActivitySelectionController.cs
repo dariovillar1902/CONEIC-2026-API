@@ -113,6 +113,15 @@ public class ActivitySelectionController : ControllerBase
         var blocks = await blocksQuery.OrderBy(b => b.Id).ToListAsync();
         var activities = await _db.SelectableActivities.OrderBy(a => a.Code).ToListAsync();
 
+        // Desafío de Barreras (Maccaferri): no eligen Taller ni Simultánea,
+        // esa actividad ya los cubre — el frontend usa esto para bloquear
+        // esas dos pestañas con un mensaje claro en vez de dejar elegir y
+        // fallar recién al confirmar.
+        var isMaccaferri = await _db.Registrations
+            .Where(r => r.Email.ToLower() == email.ToLower())
+            .Select(r => r.InterestedInMaccaferri)
+            .FirstOrDefaultAsync();
+
         var result = blocks.Select(b => new
         {
             b.Id,
@@ -140,6 +149,7 @@ public class ActivitySelectionController : ControllerBase
             WindowOpensAt = SelectionWindowOpensAt,
             WindowClosesAt = SelectionWindowClosesAt,
             IsWindowOpen = IsSelectionWindowOpen(),
+            IsMaccaferri = isMaccaferri,
             Blocks = result,
         });
     }
@@ -190,6 +200,20 @@ public class ActivitySelectionController : ControllerBase
 
         if (activity.BlockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(req.Email))
             return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+
+        // Quien participa del Desafío de Barreras (Maccaferri) no elige Taller
+        // ni Charla Simultánea — esas actividades quedan cubiertas por el
+        // propio desafío (Guía de Elección v1). Sí les corresponde elegir su
+        // Actividad de Compromiso Social y Medio Ambiente con normalidad.
+        if (activity.BlockId == TallerBlockId || activity.BlockId == SimultaneaBlockId)
+        {
+            var isMaccaferri = await _db.Registrations
+                .Where(r => r.Email.ToLower() == req.Email.ToLower())
+                .Select(r => r.InterestedInMaccaferri)
+                .FirstOrDefaultAsync();
+            if (isMaccaferri)
+                return BadRequest(new { message = "Estás anotado/a en el Desafío de Barreras (Maccaferri) — esa actividad ya cubre el Taller y la Charla Simultánea, así que no podés elegir acá. Sí tenés que elegir tu Actividad de Compromiso Social." });
+        }
 
         // La confirmación es individual por bloque (no todo-o-nada): un
         // Taller ya confirmado no se puede tocar, pero eso no bloquea elegir

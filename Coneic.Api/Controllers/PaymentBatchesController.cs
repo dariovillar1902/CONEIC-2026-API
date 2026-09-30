@@ -133,11 +133,22 @@ namespace Coneic.Api.Controllers
 
                 if (assignment.PaymentType == "Pagó 1° Cuota")
                 {
+                    // Bug corregido 2026-09-30: esta rama nunca escribía
+                    // PaymentCondition en la Registration, solo mandaba el
+                    // mail — dejaba el campo vacío aunque el pago ya estaba
+                    // validado por tesorería, y por eso el Excel exportado
+                    // (que filtra por PaymentCondition) no coincidía con lo
+                    // que mostraba la web (que cuenta por Status).
+                    reg.PaymentCondition = assignment.PaymentType;
+                    _db.SaveChanges();
+
                     var deadline = GetSecondInstallmentDeadline(reg.StageName);
                     await _email.SendFirstPaymentReceivedAsync(reg.Email, fullName, deadline);
                 }
                 else if (assignment.PaymentType is "Pagó Completo" or "Pagó 2° Cuota")
                 {
+                    reg.PaymentCondition = assignment.PaymentType;
+
                     if (reg.Status != "Paid")
                     {
                         reg.Status = "Paid";
@@ -153,6 +164,10 @@ namespace Coneic.Api.Controllers
                             loginUrl:      LoginUrl,
                             amount:        reg.Price,
                             stageName:     reg.StageName ?? "");
+                    }
+                    else
+                    {
+                        _db.SaveChanges();
                     }
                 }
             }

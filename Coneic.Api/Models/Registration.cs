@@ -57,6 +57,14 @@ namespace Coneic.Api.Models
         // New Fields (Phase 3)
         public bool ParticipatedInJoreic { get; set; }
         public bool InterestedInMaccaferri { get; set; }
+
+        // Marca manual: esta persona también es delegado/a de alguna
+        // delegación (cuenta Users con Role=delegate), además de estar
+        // anotada como asistente. No hay forma de inferirlo automáticamente
+        // — el login de delegado es institucional y no comparte email con
+        // la inscripción personal — así que lo marca un admin/delegado a
+        // mano. Permite filtrar/distinguirlos en el Excel exportado.
+        public bool IsDelegate { get; set; }
         public string? DietaryRestrictions { get; set; }
         public string? PaymentMethod { get; set; } // MercadoPago, Transferencia, Efectivo
         public decimal AmountPaid { get; set; }

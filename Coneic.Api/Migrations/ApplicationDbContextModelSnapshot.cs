@@ -649,6 +649,9 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MeetingPoint")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Speaker")
                         .HasColumnType("TEXT");
 

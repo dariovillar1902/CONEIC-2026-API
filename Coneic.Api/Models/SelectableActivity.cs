@@ -28,6 +28,9 @@ public class SelectableActivity
     /// <summary>Sede donde se dicta la actividad (ej. "UTN BA - Campus", "UCA - Puerto Madero").</summary>
     public string? Venue { get; set; }
 
+    /// <summary>Punto de encuentro cuando la actividad se hace fuera de sede (ej. acciones solidarias que salen de "UTN BA - Campus").</summary>
+    public string? MeetingPoint { get; set; }
+
     /// <summary>Hora de inicio ("HH:mm"). Null si todavía está a confirmar.</summary>
     public string? StartTime { get; set; }
 

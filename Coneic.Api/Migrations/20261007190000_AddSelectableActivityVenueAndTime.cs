@@ -17,6 +17,7 @@ namespace Coneic.Api.Migrations
             migrationBuilder.AddColumn<string>(name: "Venue", table: "SelectableActivities", type: "TEXT", nullable: true);
             migrationBuilder.AddColumn<string>(name: "StartTime", table: "SelectableActivities", type: "TEXT", nullable: true);
             migrationBuilder.AddColumn<string>(name: "EndTime", table: "SelectableActivities", type: "TEXT", nullable: true);
+            migrationBuilder.AddColumn<string>(name: "MeetingPoint", table: "SelectableActivities", type: "TEXT", nullable: true);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -24,6 +25,7 @@ namespace Coneic.Api.Migrations
             migrationBuilder.DropColumn(name: "Venue", table: "SelectableActivities");
             migrationBuilder.DropColumn(name: "StartTime", table: "SelectableActivities");
             migrationBuilder.DropColumn(name: "EndTime", table: "SelectableActivities");
+            migrationBuilder.DropColumn(name: "MeetingPoint", table: "SelectableActivities");
         }
     }
 }

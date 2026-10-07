@@ -149,6 +149,7 @@ public class ActivitySelectionController : ControllerBase
                 a.Capacity,
                 a.Family,
                 a.Venue,
+                a.MeetingPoint,
                 a.StartTime,
                 a.EndTime,
                 Taken = a.TakenCount,

@@ -27,19 +27,17 @@ public class ActivitySelectionController : ControllerBase
     private const int TallerBlockId = 2;
     private const int SimultaneaBlockId = 3;
 
-    // Ventana de elección (Guía de Elección de Actividades Académicas v1).
-    // Postergada 2026-09-25: no abre el 27/9 como decía la guía original —
-    // muchas actividades que iban a ser en Medrano terminan siendo en
-    // Campus, así que se corrieron fechas. Placeholder de apertura 13/10
-    // hasta que se defina el día real (avisar cuando esté confirmado).
-    // Antes de abrir, Select/Unselect/Confirm quedan bloqueados; después de
-    // cerrar, también (se resuelve lo que haya quedado sin elegir de forma
-    // manual, no automática — ver GetBlocks). Expresado directamente en UTC
+    // Ventana de elección de Taller / Simultánea / Solidaria (Guía de Elección
+    // de Actividades Académicas v1): abre el miércoles 07/10 a las 23:00 y
+    // cierra el jueves 08/10 a las 23:00 (hora Argentina). Antes de abrir y
+    // después de cerrar, Select/Unselect/Confirm quedan bloqueados (los admins
+    // pasan igual). Lo que quede sin elegir se asigna con auto-assign.
+    // Expresado directamente en UTC
     // (ART es UTC-3 fijo, sin horario de verano) para no depender de
     // TimeZoneInfo.FindSystemTimeZoneById, que puede fallar si el contenedor
     // no tiene tzdata instalada (ya pasó: tumbaba GetBlocks con un 500).
-    private static readonly DateTime SelectionWindowOpensAt = new(2026, 10, 13, 3, 0, 0, DateTimeKind.Utc);       // 00:00 ART, PLACEHOLDER
-    private static readonly DateTime SelectionWindowClosesAt = new(2026, 10, 16, 2, 59, 59, DateTimeKind.Utc);    // 23:59:59 ART 15/10, PLACEHOLDER
+    private static readonly DateTime SelectionWindowOpensAt = new(2026, 10, 8, 2, 0, 0, DateTimeKind.Utc);        // mié 07/10 23:00 ART (Guía de Elección v1)
+    private static readonly DateTime SelectionWindowClosesAt = new(2026, 10, 9, 2, 0, 0, DateTimeKind.Utc);       // jue 08/10 23:00 ART (Guía de Elección v1)
 
     private static bool IsSelectionWindowOpen()
     {
@@ -140,6 +138,9 @@ public class ActivitySelectionController : ControllerBase
                 a.ImageUrl,
                 a.Capacity,
                 a.Family,
+                a.Venue,
+                a.StartTime,
+                a.EndTime,
                 Taken = a.TakenCount,
             }),
         });
@@ -502,6 +503,8 @@ public class ActivitySelectionController : ControllerBase
             return BadRequest(new { message = "Todavía no elegiste una opción en esta categoría." });
         if (selection.IsConfirmed)
             return BadRequest(new { message = "Ya habías confirmado esta categoría." });
+        if (req.BlockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(req.Email))
+            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
 
         // Defensa extra: el acople Taller↔Familia↔Simultánea ya se valida en
         // Select, pero se re-chequea acá por las dudas antes de volver la
@@ -694,6 +697,153 @@ public class ActivitySelectionController : ControllerBase
             req.AdminEmail, req.TargetEmail, newActivity.Code, newActivity.Title, newActivity.BlockId);
 
         return Ok(new { message = "Reasignación realizada.", activityId = newActivity.Id, activityCode = newActivity.Code });
+    }
+
+    // ── Asignación automática de lo que quedó sin elegir ─────────────────────
+    //
+    // La Guía de Elección promete: "si no elegís Taller, Charla o Act. de
+    // Compromiso Social, el sistema te asigna una de manera automática y
+    // aleatoria; una vez asignado no se admiten cambios". Se corre una sola
+    // vez, a mano, después del cierre de la ventana. Por cada asistente con
+    // inscripción paga:
+    //   - un borrador sin confirmar se confirma tal cual (cuenta como elección);
+    //   - lo que falta se sortea entre las opciones con cupo, respetando la
+    //     Familia (la Simultánea siempre de la misma Familia que el Taller);
+    //   - quien está en el Desafío de Barreras no recibe Taller ni Simultánea.
+    // No toca Visitas Técnicas (bloque 1) y no envía mails. DryRun (default
+    // true) calcula y devuelve el resumen sin guardar nada.
+    public record AutoAssignRequest(string AdminEmail, bool? DryRun);
+
+    [HttpPost("auto-assign")]
+    public async Task<IActionResult> AutoAssign([FromBody] AutoAssignRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.AdminEmail) ||
+            !req.AdminEmail.Equals(DirectorioOverrideEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(403, new { message = "Esta acción está restringida a la cuenta de Directorio." });
+        }
+
+        var dryRun = req.DryRun ?? true;
+        const int SolidariaBlockId = 4;
+        var blockIds = new[] { TallerBlockId, SimultaneaBlockId, SolidariaBlockId };
+
+        var activities = await _db.SelectableActivities
+            .Where(a => blockIds.Contains(a.BlockId))
+            .ToListAsync();
+        var taken = activities.ToDictionary(a => a.Id, a => a.TakenCount);
+
+        var people = await _db.Registrations
+            .Where(r => r.Status == "Paid")
+            .Select(r => new { r.Email, r.InterestedInMaccaferri })
+            .ToListAsync();
+        var emails = people.Select(p => p.Email.ToLower()).ToHashSet();
+
+        var allSelections = await _db.ActivitySelections
+            .Where(s => blockIds.Contains(s.BlockId))
+            .ToListAsync();
+        var byUser = allSelections
+            .Where(s => emails.Contains(s.UserEmail.ToLower()))
+            .GroupBy(s => s.UserEmail.ToLower())
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var rng = Random.Shared;
+        var now = DateTime.Now;
+        var confirmedDrafts = 0;
+        var assigned = new Dictionary<int, int> { [TallerBlockId] = 0, [SimultaneaBlockId] = 0, [SolidariaBlockId] = 0 };
+        var failures = new List<string>();
+        var toAdd = new List<ActivitySelection>();
+
+        bool HasRoom(SelectableActivity a) => taken[a.Id] < a.Capacity;
+        SelectableActivity? Pick(IEnumerable<SelectableActivity> pool)
+        {
+            var open = pool.Where(HasRoom).ToList();
+            return open.Count == 0 ? null : open[rng.Next(open.Count)];
+        }
+
+        foreach (var person in people.OrderBy(_ => rng.Next()))
+        {
+            var email = person.Email;
+            var mine = byUser.TryGetValue(email.ToLower(), out var list) ? list : new List<ActivitySelection>();
+            ActivitySelection? Existing(int blockId) => mine.FirstOrDefault(s => s.BlockId == blockId);
+
+            // Los borradores se confirman como están.
+            foreach (var draft in mine.Where(s => !s.IsConfirmed))
+            {
+                draft.IsConfirmed = true;
+                draft.ConfirmedAt = now;
+                confirmedDrafts++;
+            }
+
+            if (!person.InterestedInMaccaferri)
+            {
+                var tallerSel = Existing(TallerBlockId);
+                var simSel = Existing(SimultaneaBlockId);
+                SelectableActivity? taller = tallerSel == null ? null : activities.First(a => a.Id == tallerSel.ActivityId);
+
+                if (taller == null)
+                {
+                    // Solo sirve un Taller cuya Familia todavía tenga alguna Simultánea con cupo.
+                    var viable = activities
+                        .Where(a => a.BlockId == TallerBlockId && HasRoom(a)
+                            && activities.Any(s => s.BlockId == SimultaneaBlockId && s.Family == a.Family && HasRoom(s)))
+                        .ToList();
+                    if (simSel != null)
+                    {
+                        var simFamily = activities.First(a => a.Id == simSel.ActivityId).Family;
+                        viable = viable.Where(a => a.Family == simFamily).ToList();
+                    }
+                    taller = Pick(viable);
+                    if (taller == null) { failures.Add($"{email}: sin Taller con cupo"); continue; }
+                    taken[taller.Id]++;
+                    var sel = new ActivitySelection { UserEmail = email, BlockId = TallerBlockId, ActivityId = taller.Id, IsConfirmed = true, ConfirmedAt = now };
+                    toAdd.Add(sel); mine.Add(sel); assigned[TallerBlockId]++;
+                }
+
+                if (simSel == null)
+                {
+                    var sim = Pick(activities.Where(a => a.BlockId == SimultaneaBlockId && a.Family == taller.Family));
+                    if (sim == null) { failures.Add($"{email}: sin Simultánea con cupo en la familia {taller.Family}"); continue; }
+                    taken[sim.Id]++;
+                    var sel = new ActivitySelection { UserEmail = email, BlockId = SimultaneaBlockId, ActivityId = sim.Id, IsConfirmed = true, ConfirmedAt = now };
+                    toAdd.Add(sel); mine.Add(sel); assigned[SimultaneaBlockId]++;
+                }
+            }
+
+            if (Existing(SolidariaBlockId) == null)
+            {
+                var sol = Pick(activities.Where(a => a.BlockId == SolidariaBlockId));
+                if (sol == null) { failures.Add($"{email}: sin Solidaria con cupo"); continue; }
+                taken[sol.Id]++;
+                var sel = new ActivitySelection { UserEmail = email, BlockId = SolidariaBlockId, ActivityId = sol.Id, IsConfirmed = true, ConfirmedAt = now };
+                toAdd.Add(sel); mine.Add(sel); assigned[SolidariaBlockId]++;
+            }
+        }
+
+        if (!dryRun)
+        {
+            using var tx = await _db.Database.BeginTransactionAsync();
+            _db.ActivitySelections.AddRange(toAdd);
+            foreach (var a in activities) a.TakenCount = taken[a.Id];
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+            _logger.LogWarning("[AUTO-ASSIGN] {Admin} asignó {T} talleres, {S} simultáneas, {So} solidarias; {D} borradores confirmados; {F} sin lugar",
+                req.AdminEmail, assigned[TallerBlockId], assigned[SimultaneaBlockId], assigned[SolidariaBlockId], confirmedDrafts, failures.Count);
+        }
+        else
+        {
+            _db.ChangeTracker.Clear();
+        }
+
+        return Ok(new
+        {
+            dryRun,
+            people = people.Count,
+            confirmedDrafts,
+            assignedTalleres = assigned[TallerBlockId],
+            assignedSimultaneas = assigned[SimultaneaBlockId],
+            assignedSolidarias = assigned[SolidariaBlockId],
+            failures,
+        });
     }
 
     // ── Reenvío masivo del mail de confirmación (backfill puntual) ───────────

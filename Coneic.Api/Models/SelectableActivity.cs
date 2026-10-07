@@ -25,6 +25,15 @@ public class SelectableActivity
     /// </summary>
     public int? Family { get; set; }
 
+    /// <summary>Sede donde se dicta la actividad (ej. "UTN BA - Campus", "UCA - Puerto Madero").</summary>
+    public string? Venue { get; set; }
+
+    /// <summary>Hora de inicio ("HH:mm"). Null si todavía está a confirmar.</summary>
+    public string? StartTime { get; set; }
+
+    /// <summary>Hora de fin ("HH:mm"). Null si todavía está a confirmar.</summary>
+    public string? EndTime { get; set; }
+
     /// <summary>
     /// Denormalized running count of active selections, updated via a single
     /// atomic UPDATE ... WHERE TakenCount &lt; Capacity (see

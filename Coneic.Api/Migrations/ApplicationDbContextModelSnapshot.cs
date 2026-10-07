@@ -640,6 +640,9 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("EndTime")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("Family")
                         .HasColumnType("INTEGER");
 
@@ -649,11 +652,17 @@ namespace Coneic.Api.Migrations
                     b.Property<string>("Speaker")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("StartTime")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TakenCount")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Venue")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

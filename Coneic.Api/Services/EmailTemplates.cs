@@ -480,7 +480,8 @@ internal static class EmailTemplates
         string toName,
         string? tallerCode, string? tallerTitle,
         string? simultaneaCode, string? simultaneaTitle,
-        string? solidariaCode, string? solidariaTitle)
+        string? solidariaCode, string? solidariaTitle,
+        bool desafioBarreras = false)
     {
         var subject = "Tus actividades académicas elegidas – CONEIC XVIII";
         var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Actividades académicas confirmadas");
@@ -495,8 +496,10 @@ internal static class EmailTemplates
             </tr>
             """;
 
-        var rows = Row("Taller", tallerCode, tallerTitle)
-            + Row("Charla Simultánea", simultaneaCode, simultaneaTitle)
+        // Desafío de Barreras (Maccaferri): esa actividad reemplaza Taller y Charla Simultánea.
+        var rows = (desafioBarreras
+                ? Row("Taller y Charla Simultánea", "Desafío de Barreras", "Maccaferri · UTN BA - Campus, 09:00 hs")
+                : Row("Taller", tallerCode, tallerTitle) + Row("Charla Simultánea", simultaneaCode, simultaneaTitle))
             + Row("Actividad de Compromiso Social y Medio Ambiente", solidariaCode, solidariaTitle);
 
         var body = $"""

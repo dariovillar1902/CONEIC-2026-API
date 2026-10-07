@@ -64,10 +64,10 @@ public class AcsEmailService : IEmailService
         string toEmail, string toName,
         string? tallerCode, string? tallerTitle,
         string? simultaneaCode, string? simultaneaTitle,
-        string? solidariaCode, string? solidariaTitle)
+        string? solidariaCode, string? solidariaTitle, bool desafioBarreras = false)
     {
         var (subject, html) = EmailTemplates.AcademicActivitiesConfirmed(
-            toName, tallerCode, tallerTitle, simultaneaCode, simultaneaTitle, solidariaCode, solidariaTitle);
+            toName, tallerCode, tallerTitle, simultaneaCode, simultaneaTitle, solidariaCode, solidariaTitle, desafioBarreras);
         await SendAsync(toEmail, toName, subject, html);
     }
 

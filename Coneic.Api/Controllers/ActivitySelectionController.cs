@@ -39,6 +39,16 @@ public class ActivitySelectionController : ControllerBase
     private static readonly DateTime SelectionWindowOpensAt = new(2026, 10, 8, 2, 0, 0, DateTimeKind.Utc);        // mié 07/10 23:00 ART (Guía de Elección v1)
     private static readonly DateTime SelectionWindowClosesAt = new(2026, 10, 9, 2, 0, 0, DateTimeKind.Utc);       // jue 08/10 23:00 ART (Guía de Elección v1)
 
+    // Hasta las 22:57 ART del 07/10 las cuentas admin pueden elegir a modo de
+    // prueba (pedido del equipo, 2026-10-07); a partir de ahí solo eligen los
+    // asistentes, dentro de la ventana. Expresado en UTC (01:57 UTC del 08/10).
+    private static readonly DateTime AdminSelectionCutoff = new(2026, 10, 8, 1, 57, 0, DateTimeKind.Utc);
+
+    private async Task<bool> CanSelectNowAsync(string email) =>
+        await IsAdminEmailAsync(email)
+            ? DateTime.UtcNow < AdminSelectionCutoff
+            : IsSelectionWindowOpen();
+
     private static bool IsSelectionWindowOpen()
     {
         var nowUtc = DateTime.UtcNow;
@@ -150,6 +160,7 @@ public class ActivitySelectionController : ControllerBase
             WindowOpensAt = SelectionWindowOpensAt,
             WindowClosesAt = SelectionWindowClosesAt,
             IsWindowOpen = IsSelectionWindowOpen(),
+            CanSelect = await CanSelectNowAsync(email),
             IsMaccaferri = isMaccaferri,
             Blocks = result,
         });
@@ -199,8 +210,8 @@ public class ActivitySelectionController : ControllerBase
         if (activity == null)
             return NotFound(new { message = "La actividad indicada no existe." });
 
-        if (activity.BlockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(req.Email))
-            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+        if (activity.BlockId != 1 && !await CanSelectNowAsync(req.Email))
+            return BadRequest(new { message = "La elección de actividades académicas no está habilitada en este momento." });
 
         // Quien participa del Desafío de Barreras (Maccaferri) no elige Taller
         // ni Charla Simultánea — esas actividades quedan cubiertas por el
@@ -332,8 +343,8 @@ public class ActivitySelectionController : ControllerBase
         if (existing == null) return NoContent();
         if (existing.IsConfirmed)
             return BadRequest(new { message = "Ya confirmaste tu selección definitiva — no se puede modificar." });
-        if (blockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(email))
-            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+        if (blockId != 1 && !await CanSelectNowAsync(email))
+            return BadRequest(new { message = "La elección de actividades académicas no está habilitada en este momento." });
 
         // Quitar el Taller invalida la Charla Simultánea elegida (dependía de
         // su Familia) — pero si esa Simultánea ya está confirmada
@@ -503,8 +514,8 @@ public class ActivitySelectionController : ControllerBase
             return BadRequest(new { message = "Todavía no elegiste una opción en esta categoría." });
         if (selection.IsConfirmed)
             return BadRequest(new { message = "Ya habías confirmado esta categoría." });
-        if (req.BlockId != 1 && !IsSelectionWindowOpen() && !await IsAdminEmailAsync(req.Email))
-            return BadRequest(new { message = "La ventana de elección de actividades académicas no está abierta." });
+        if (req.BlockId != 1 && !await CanSelectNowAsync(req.Email))
+            return BadRequest(new { message = "La elección de actividades académicas no está habilitada en este momento." });
 
         // Defensa extra: el acople Taller↔Familia↔Simultánea ya se valida en
         // Select, pero se re-chequea acá por las dudas antes de volver la
@@ -584,21 +595,29 @@ public class ActivitySelectionController : ControllerBase
         var simultanea = chosen.FirstOrDefault(c => c.BlockId == SimultaneaBlockId);
         var solidaria = chosen.FirstOrDefault(c => c.BlockId == 4);
 
-        // Todavía falta confirmar alguna de las 3 — no se manda nada todavía.
-        if (taller is not { IsConfirmed: true } || simultanea is not { IsConfirmed: true } || solidaria is not { IsConfirmed: true })
-            return;
-
         var registration = await _db.Registrations
             .FirstOrDefaultAsync(r => r.Email.ToLower() == userEmail.ToLower());
+
+        // Quien está en el Desafío de Barreras no elige Taller ni Simultánea:
+        // para ellos el mail sale cuando confirman la Solidaria.
+        var isBarreras = registration?.InterestedInMaccaferri == true;
+
+        // Todavía falta confirmar alguna categoría — no se manda nada todavía.
+        if (solidaria is not { IsConfirmed: true })
+            return;
+        if (!isBarreras && (taller is not { IsConfirmed: true } || simultanea is not { IsConfirmed: true }))
+            return;
+
         var name = registration != null ? $"{registration.Name} {registration.Lastname}" : userEmail;
 
         try
         {
             await _email.SendAcademicActivitiesConfirmedAsync(
                 userEmail, name,
-                taller.Code, taller.Title,
-                simultanea.Code, simultanea.Title,
-                solidaria.Code, solidaria.Title);
+                taller?.Code, taller?.Title,
+                simultanea?.Code, simultanea?.Title,
+                solidaria.Code, solidaria.Title,
+                isBarreras);
         }
         catch
         {
@@ -697,6 +716,93 @@ public class ActivitySelectionController : ControllerBase
             req.AdminEmail, req.TargetEmail, newActivity.Code, newActivity.Title, newActivity.BlockId);
 
         return Ok(new { message = "Reasignación realizada.", activityId = newActivity.Id, activityCode = newActivity.Code });
+    }
+
+    // ── Exportar a Excel lo que se ve en la tab "Elección de actividades" ────
+    //
+    // El panel filtra y ordena en el navegador (búsqueda, categoría, actividad,
+    // delegación, orden) y hasta arma filas "Sin elegir" a partir del padrón,
+    // así que le manda a este endpoint exactamente las filas que están a la
+    // vista: el Excel respeta cualquier filtro aplicado en pantalla.
+    public record SelectionExportRow(
+        string? Lastname, string? Name, string? Email, string? Faculty, int BlockId,
+        string? ActivityCode, string? ActivityTitle, bool IsConfirmed,
+        string? SelectedAt, string? ConfirmedAt);
+
+    public record SelectionExportRequest(List<SelectionExportRow>? Rows, string? Filters);
+
+    private static string ExcelSafe(string? value)
+    {
+        var v = value ?? "";
+        // Evita que un valor que arranca con = + - @ se interprete como fórmula.
+        return v.Length > 0 && "=+-@".Contains(v[0]) ? "'" + v : v;
+    }
+
+    private static string BlockLabel(int blockId) => blockId switch
+    {
+        1 => "Visita Técnica",
+        TallerBlockId => "Taller",
+        SimultaneaBlockId => "Charla Simultánea",
+        4 => "Actividad Solidaria",
+        _ => $"Bloque {blockId}",
+    };
+
+    [HttpPost("export")]
+    public IActionResult ExportSelections([FromBody] SelectionExportRequest req)
+    {
+        var rows = req.Rows ?? new List<SelectionExportRow>();
+        if (rows.Count > 20000)
+            return BadRequest(new { message = "Demasiadas filas para exportar." });
+
+        using var wb = new ClosedXML.Excel.XLWorkbook();
+        var ws = wb.Worksheets.Add("Elección de actividades");
+
+        var headers = new[]
+        {
+            "Fecha de elección", "Apellido", "Nombre", "Email", "Delegación",
+            "Categoría", "Código", "Actividad", "Estado", "Fecha de confirmación",
+        };
+        for (var c = 0; c < headers.Length; c++)
+        {
+            var cell = ws.Cell(1, c + 1);
+            cell.Value = headers[c];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+        }
+
+        var r = 2;
+        foreach (var row in rows)
+        {
+            var hasActivity = !string.IsNullOrEmpty(row.ActivityCode);
+            ws.Cell(r, 1).Value = ExcelSafe(row.SelectedAt);
+            ws.Cell(r, 2).Value = ExcelSafe(row.Lastname);
+            ws.Cell(r, 3).Value = ExcelSafe(row.Name);
+            ws.Cell(r, 4).Value = ExcelSafe(row.Email);
+            ws.Cell(r, 5).Value = ExcelSafe(row.Faculty);
+            ws.Cell(r, 6).Value = hasActivity ? BlockLabel(row.BlockId) : "";
+            ws.Cell(r, 7).Value = ExcelSafe(row.ActivityCode);
+            ws.Cell(r, 8).Value = hasActivity ? ExcelSafe(row.ActivityTitle) : "Sin elegir";
+            ws.Cell(r, 9).Value = !hasActivity ? "Sin elegir" : row.IsConfirmed ? "Confirmada" : "Borrador";
+            ws.Cell(r, 10).Value = ExcelSafe(row.ConfirmedAt);
+            r++;
+        }
+
+        ws.SheetView.FreezeRows(1);
+        if (rows.Count > 0) ws.Range(1, 1, r - 1, headers.Length).SetAutoFilter();
+        ws.Columns().AdjustToContents();
+
+        var info = wb.Worksheets.Add("Filtros aplicados");
+        info.Cell(1, 1).Value = "Filtros aplicados al exportar";
+        info.Cell(1, 1).Style.Font.Bold = true;
+        info.Cell(2, 1).Value = string.IsNullOrWhiteSpace(req.Filters) ? "Sin filtros (todas las filas)." : ExcelSafe(req.Filters);
+        info.Cell(3, 1).Value = $"Filas exportadas: {rows.Count}";
+        info.Column(1).AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return File(ms.ToArray(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "eleccion_actividades.xlsx");
     }
 
     // ── Asignación automática de lo que quedó sin elegir ─────────────────────

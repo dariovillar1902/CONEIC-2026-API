@@ -26,7 +26,7 @@ public interface IEmailService
         string toEmail, string toName,
         string? tallerCode, string? tallerTitle,
         string? simultaneaCode, string? simultaneaTitle,
-        string? solidariaCode, string? solidariaTitle);
+        string? solidariaCode, string? solidariaTitle, bool desafioBarreras = false);
 
     /// <summary>Envía la nueva contraseña generada por el flujo de "olvidé mi contraseña".</summary>
     Task SendPasswordResetAsync(string toEmail, string toName, string newPassword);

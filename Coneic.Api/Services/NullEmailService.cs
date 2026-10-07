@@ -57,7 +57,7 @@ public class NullEmailService : IEmailService
         string toEmail, string toName,
         string? tallerCode, string? tallerTitle,
         string? simultaneaCode, string? simultaneaTitle,
-        string? solidariaCode, string? solidariaTitle)
+        string? solidariaCode, string? solidariaTitle, bool desafioBarreras = false)
     {
         _logger.LogInformation(
             "[DEV EMAIL] AcademicActivitiesConfirmed → {Email} ({Name}) | Taller: {TallerCode} - {TallerTitle} | Simultánea: {SimultaneaCode} - {SimultaneaTitle} | Solidaria: {SolidariaCode} - {SolidariaTitle}",

@@ -36,10 +36,13 @@ namespace Coneic.Api.Controllers
         public IActionResult Login([FromBody] LoginRequest request)
         {
             var email = request.Email.ToLower();
-            var user = _db.Users.AsEnumerable()
-                .FirstOrDefault(u =>
-                    u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)
-                    && u.Password == request.Password);
+            // Consulta en SQL (antes se traían los ~800 usuarios a memoria en
+            // cada login): clave en la elección, con cientos de ingresos a la vez.
+            // Primero el índice en memoria; si no coincide (cuenta nueva o clave
+            // recién cambiada) se confirma contra la base.
+            var user = HotCache.Users.TryGetValue(email, out var cached) && cached.Password == request.Password
+                ? cached
+                : _db.Users.FirstOrDefault(u => u.Email.ToLower() == email && u.Password == request.Password);
 
             if (user == null)
                 return Unauthorized(new { message = "Credenciales inválidas" });

@@ -24,6 +24,8 @@ public class SqlitePragmaInterceptor : DbConnectionInterceptor
     // eligiendo actividades a la vez). Un timeout más alto deja que más
     // escrituras encoladas esperen su turno en vez de fallar con "database
     // is locked" bajo ráfagas de concurrencia.
+    // synchronous=OFF: sin fsync por transacción (en el disco CIFS cada fsync
+    // cuesta cientos de ms y limitaba las escrituras a ~1 por segundo).
     private const string Pragmas = "PRAGMA busy_timeout=60000;";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)

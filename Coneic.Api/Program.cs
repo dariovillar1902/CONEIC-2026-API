@@ -61,6 +61,11 @@ builder.Services.AddCors(options =>
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5091";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
+// Con SQLite el acceso a la base es sincrónico: bajo una avalancha de pedidos
+// (la elección de actividades) el pool arrancaba con muy pocos hilos y crecía
+// de a uno, encolando hasta las respuestas más simples.
+ThreadPool.SetMinThreads(200, 200);
+
 var app = builder.Build();
 
 // Apply EF Core migrations and seed from data.json on first run

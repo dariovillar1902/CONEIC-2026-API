@@ -269,26 +269,38 @@ namespace Coneic.Api.Controllers
         // la pedía). Por email en vez de id porque lo llama el propio
         // asistente logueado, que no conoce su Registration.Id.
 
+        // Lo llama BirthDateGate en cada ingreso al panel: se resuelve desde el
+        // índice en memoria (si ya está cargado) para no competir con las
+        // escrituras por el archivo SQLite; si no, desde la base.
         [HttpGet("by-email/{email}")]
         public IActionResult GetByEmail(string email)
         {
-            var reg = _db.Registrations.AsEnumerable()
-                .FirstOrDefault(r => r.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            var key = email.ToLowerInvariant();
+            if (HotCache.RegistrationsLoaded)
+                return HotCache.Registrations.TryGetValue(key, out var hit) ? Ok(hit) : NotFound();
+
+            var reg = _db.Registrations.AsNoTracking().FirstOrDefault(r => r.Email.ToLower() == key);
             return reg == null ? NotFound() : Ok(reg);
         }
 
         public record UpdateBirthDateDto(DateTime BirthDate);
 
         [HttpPatch("by-email/{email}/birthdate")]
-        public IActionResult UpdateBirthDate(string email, [FromBody] UpdateBirthDateDto dto)
+        public async Task<IActionResult> UpdateBirthDate(string email, [FromBody] UpdateBirthDateDto dto)
         {
-            var reg = _db.Registrations.AsEnumerable()
-                .FirstOrDefault(r => r.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
-            if (reg == null) return NotFound();
+            var lower = email.ToLowerInvariant();
+            await HotCache.WriteGate.WaitAsync();
+            try
+            {
+                var reg = _db.Registrations.FirstOrDefault(r => r.Email.ToLower() == lower);
+                if (reg == null) return NotFound();
 
-            reg.BirthDate = dto.BirthDate;
-            _db.SaveChanges();
-            return Ok(reg);
+                reg.BirthDate = dto.BirthDate;
+                _db.SaveChanges();
+                if (HotCache.RegistrationsLoaded) HotCache.Registrations[lower] = reg;
+                return Ok(reg);
+            }
+            finally { HotCache.WriteGate.Release(); }
         }
 
         [HttpPut("{id}")]

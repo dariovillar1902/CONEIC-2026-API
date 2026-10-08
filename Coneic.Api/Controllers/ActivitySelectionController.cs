@@ -3,6 +3,7 @@ using Coneic.Api.Models;
 using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace Coneic.Api.Controllers;
 
@@ -60,12 +61,158 @@ public class ActivitySelectionController : ControllerBase
     // sin tocar la ventana real que rige para el resto. Por rol, no por
     // lista de emails — cualquier cuenta admin actual o futura queda
     // cubierta automáticamente.
-    private async Task<bool> IsAdminEmailAsync(string email)
+    // ── Índice en memoria (una sola instancia de la app) ────────────────────
+    //
+    // Durante la elección cientos de personas piden /blocks y /status a la vez
+    // mientras otras tantas escriben. Con SQLite sobre el disco compartido
+    // (CIFS) cada lectura competía con las escrituras por el lock del archivo
+    // y las respuestas se iban a decenas de segundos. Ahora esas lecturas salen
+    // de memoria: el catálogo (cupos) se refresca en segundo plano cada 1,5 s y
+    // las elecciones de cada persona (más admin / Barreras) cada 30 s, y tras
+    // cada escritura propia se actualizan al instante. Nunca se bloquea un
+    // pedido esperando a la base: si el dato está viejo se sirve igual y se
+    // refresca aparte (dentro de la misma cola que las escrituras, para que la
+    // lectura no se muera de hambre).
+    private sealed record UserSnap(List<ActivitySelection> Selections, bool IsMaccaferri, bool IsAdmin)
     {
-        var user = await _db.Users.AsQueryable()
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
-        return user?.Role == "admin";
+        public static readonly UserSnap Empty = new(new List<ActivitySelection>(), false, false);
     }
+
+    private sealed record CatalogSnap(List<ActivityBlock> Blocks, List<SelectableActivity> Activities);
+
+    private static ConcurrentDictionary<string, UserSnap> _users = new();
+    private static volatile CatalogSnap? _catalog;
+    private static volatile bool _loaded;
+    private static long _lastCatalogTicks;
+    private static long _lastUsersTicks;
+    private static int _refreshingCatalog;
+    private static int _refreshingUsers;
+    private static readonly SemaphoreSlim FirstLoadLock = new(1, 1);
+
+    private static void InvalidateAll()
+    {
+        Interlocked.Exchange(ref _lastCatalogTicks, 0);
+        Interlocked.Exchange(ref _lastUsersTicks, 0);
+    }
+
+    private static async Task RefreshCatalogAsync(IServiceScopeFactory sf)
+    {
+        await HotCache.WriteGate.WaitAsync();
+        try
+        {
+            using var scope = sf.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var blocks = await db.ActivityBlocks.AsNoTracking().OrderBy(b => b.Id).ToListAsync();
+            var acts = await db.SelectableActivities.AsNoTracking().OrderBy(a => a.Code).ToListAsync();
+            _catalog = new CatalogSnap(blocks, acts);
+            Interlocked.Exchange(ref _lastCatalogTicks, Environment.TickCount64);
+        }
+        finally { HotCache.WriteGate.Release(); }
+    }
+
+    private static async Task RefreshUsersAsync(IServiceScopeFactory sf)
+    {
+        // Se hace dentro de la cola de escrituras: nadie escribe mientras se lee.
+        await HotCache.WriteGate.WaitAsync();
+        try
+        {
+            using var scope = sf.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var sels = await db.ActivitySelections.AsNoTracking().ToListAsync();
+            var regs = await db.Registrations.AsNoTracking().ToListAsync();
+            var users = await db.Users.AsNoTracking().ToListAsync();
+
+            var selByEmail = sels.GroupBy(x => x.UserEmail.ToLowerInvariant()).ToDictionary(g => g.Key, g => g.ToList());
+            var macc = regs.Where(r => r.InterestedInMaccaferri).Select(r => r.Email.ToLowerInvariant()).ToHashSet();
+            var admins = users.Where(u => u.Role == "admin").Select(u => u.Email.ToLowerInvariant()).ToHashSet();
+
+            var dict = new ConcurrentDictionary<string, UserSnap>();
+            foreach (var key in selByEmail.Keys.Union(macc).Union(admins))
+                dict[key] = new UserSnap(selByEmail.TryGetValue(key, out var l) ? l : new List<ActivitySelection>(), macc.Contains(key), admins.Contains(key));
+            _users = dict;
+
+            HotCache.Users = new ConcurrentDictionary<string, User>(
+                users.GroupBy(u => u.Email.ToLowerInvariant()).ToDictionary(g => g.Key, g => g.First()));
+            HotCache.Registrations = new ConcurrentDictionary<string, Registration>(
+                regs.GroupBy(r => r.Email.ToLowerInvariant()).ToDictionary(g => g.Key, g => g.First()));
+            HotCache.RegistrationsLoaded = true;
+            Interlocked.Exchange(ref _lastUsersTicks, Environment.TickCount64);
+        }
+        finally { HotCache.WriteGate.Release(); }
+    }
+
+    private async Task EnsureCachesAsync()
+    {
+        var sf = _scopeFactory;
+        if (!_loaded)
+        {
+            await FirstLoadLock.WaitAsync();
+            try
+            {
+                if (!_loaded)
+                {
+                    await RefreshCatalogAsync(sf);
+                    await RefreshUsersAsync(sf);
+                    _loaded = true;
+                }
+            }
+            finally { FirstLoadLock.Release(); }
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        if (now - Interlocked.Read(ref _lastCatalogTicks) > 1500 && Interlocked.CompareExchange(ref _refreshingCatalog, 1, 0) == 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await RefreshCatalogAsync(sf); }
+                catch { /* se sigue sirviendo el catálogo anterior */ }
+                finally { Volatile.Write(ref _refreshingCatalog, 0); }
+            });
+        }
+        if (now - Interlocked.Read(ref _lastUsersTicks) > 30000 && Interlocked.CompareExchange(ref _refreshingUsers, 1, 0) == 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await RefreshUsersAsync(sf); }
+                catch { /* se sigue sirviendo el índice anterior */ }
+                finally { Volatile.Write(ref _refreshingUsers, 0); }
+            });
+        }
+    }
+
+    private async Task<UserSnap> GetUserSnapAsync(string email)
+    {
+        await EnsureCachesAsync();
+        return _users.TryGetValue(email.ToLowerInvariant(), out var s) ? s : UserSnap.Empty;
+    }
+
+    private async Task<CatalogSnap> GetCatalogAsync(bool includeInactive)
+    {
+        await EnsureCachesAsync();
+        var snap = _catalog!;
+        return includeInactive ? snap : new CatalogSnap(snap.Blocks.Where(b => b.IsActive).ToList(), snap.Activities);
+    }
+
+    // Tras una escritura propia se recargan las elecciones de esa persona.
+    // Llamar SOLO con la cola de escrituras tomada.
+    private async Task ReloadUserAsync(string email)
+    {
+        var lower = email.ToLowerInvariant();
+        var sel = await _db.ActivitySelections.AsNoTracking()
+            .Where(s => s.UserEmail.ToLower() == lower).ToListAsync();
+        var old = _users.TryGetValue(lower, out var o) ? o : UserSnap.Empty;
+        _users[lower] = new UserSnap(sel, old.IsMaccaferri, old.IsAdmin);
+    }
+
+    private async Task ReloadUserWithGateAsync(string email)
+    {
+        await HotCache.WriteGate.WaitAsync();
+        try { await ReloadUserAsync(email); }
+        finally { HotCache.WriteGate.Release(); }
+    }
+
+    private async Task<bool> IsAdminEmailAsync(string email) => (await GetUserSnapAsync(email)).IsAdmin;
 
     // Recorte temporal ("por ahora") mientras se prueba la feature con el
     // equipo: solo estas cuentas admin reciben el mail de confirmación, y a
@@ -106,31 +253,17 @@ public class ActivitySelectionController : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "Falta el email." });
 
-        var mySelections = await _db.ActivitySelections
-            .Where(s => s.UserEmail.ToLower() == email.ToLower())
-            .ToListAsync();
-
-        // includeInactive=true es para el catálogo del panel de admin (para
-        // poder asignar/reasignar Visita Técnica, que quedó IsActive=false
-        // una vez cerrada su ventana de elección, pero sigue siendo una
-        // actividad real a la que hay que poder anotar gente a mano). El
-        // flujo normal del asistente (sin este parámetro) sigue viendo solo
-        // los bloques activos, sin cambios.
-        var blocksQuery = _db.ActivityBlocks.AsQueryable();
-        if (!includeInactive) blocksQuery = blocksQuery.Where(b => b.IsActive);
-        var blocks = await blocksQuery.OrderBy(b => b.Id).ToListAsync();
-        var activities = await _db.SelectableActivities.OrderBy(a => a.Code).ToListAsync();
+        var user = await GetUserSnapAsync(email);
+        var catalog = await GetCatalogAsync(includeInactive);
+        var mySelections = user.Selections;
 
         // Desafío de Barreras (Maccaferri): no eligen Taller ni Simultánea,
         // esa actividad ya los cubre — el frontend usa esto para bloquear
         // esas dos pestañas con un mensaje claro en vez de dejar elegir y
         // fallar recién al confirmar.
-        var isMaccaferri = await _db.Registrations
-            .Where(r => r.Email.ToLower() == email.ToLower())
-            .Select(r => r.InterestedInMaccaferri)
-            .FirstOrDefaultAsync();
+        var isMaccaferri = user.IsMaccaferri;
 
-        var result = blocks.Select(b => new
+        var result = catalog.Blocks.Select(b => new
         {
             b.Id,
             b.Category,
@@ -138,7 +271,7 @@ public class ActivitySelectionController : ControllerBase
             b.Note,
             b.MaxSelections,
             YourSelectionActivityId = mySelections.FirstOrDefault(s => s.BlockId == b.Id)?.ActivityId,
-            Options = activities.Where(a => a.BlockId == b.Id).Select(a => new
+            Options = catalog.Activities.Where(a => a.BlockId == b.Id).Select(a => new
             {
                 a.Id,
                 a.Code,
@@ -161,7 +294,7 @@ public class ActivitySelectionController : ControllerBase
             WindowOpensAt = SelectionWindowOpensAt,
             WindowClosesAt = SelectionWindowClosesAt,
             IsWindowOpen = IsSelectionWindowOpen(),
-            CanSelect = await CanSelectNowAsync(email),
+            CanSelect = user.IsAdmin ? DateTime.UtcNow < AdminSelectionCutoff : IsSelectionWindowOpen(),
             IsMaccaferri = isMaccaferri,
             Blocks = result,
         });
@@ -175,19 +308,21 @@ public class ActivitySelectionController : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "Falta el email." });
 
-        var mine = await (
-            from s in _db.ActivitySelections
-            join a in _db.SelectableActivities on s.ActivityId equals a.Id
-            where s.UserEmail.ToLower() == email.ToLower()
-            select new
+        var user = await GetUserSnapAsync(email);
+        var catalog = await GetCatalogAsync(true);
+        var byId = catalog.Activities.ToDictionary(a => a.Id);
+
+        var mine = user.Selections
+            .Where(s => byId.ContainsKey(s.ActivityId))
+            .Select(s => new
             {
                 s.BlockId,
                 s.IsConfirmed,
                 s.ConfirmedAt,
-                ActivityId = a.Id,
-                ActivityCode = a.Code,
-                ActivityTitle = a.Title,
-            }).ToListAsync();
+                ActivityId = s.ActivityId,
+                ActivityCode = byId[s.ActivityId].Code,
+                ActivityTitle = byId[s.ActivityId].Title,
+            }).ToList();
 
         return Ok(new
         {
@@ -203,6 +338,14 @@ public class ActivitySelectionController : ControllerBase
 
     [HttpPost("select")]
     public async Task<IActionResult> Select([FromBody] SelectRequest req)
+    {
+        await EnsureCachesAsync();   // antes de tomar la cola: la carga inicial también la usa
+        await HotCache.WriteGate.WaitAsync();
+        try { return await SelectCore(req); }
+        finally { HotCache.WriteGate.Release(); }
+    }
+
+    private async Task<IActionResult> SelectCore(SelectRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Email))
             return BadRequest(new { message = "Falta el email." });
@@ -329,6 +472,7 @@ public class ActivitySelectionController : ControllerBase
         await _db.SaveChangesAsync();
 
         await tx.CommitAsync();
+        await ReloadUserAsync(req.Email);
 
         return Ok(new { message = "Selección guardada.", activityId = activity.Id, blockId = activity.BlockId });
     }
@@ -337,6 +481,14 @@ public class ActivitySelectionController : ControllerBase
 
     [HttpDelete("select")]
     public async Task<IActionResult> Unselect([FromQuery] string email, [FromQuery] int blockId)
+    {
+        await EnsureCachesAsync();   // antes de tomar la cola: la carga inicial también la usa
+        await HotCache.WriteGate.WaitAsync();
+        try { return await UnselectCore(email, blockId); }
+        finally { HotCache.WriteGate.Release(); }
+    }
+
+    private async Task<IActionResult> UnselectCore(string email, int blockId)
     {
         var existing = await _db.ActivitySelections
             .FirstOrDefaultAsync(s => s.UserEmail.ToLower() == email.ToLower() && s.BlockId == blockId);
@@ -381,6 +533,7 @@ public class ActivitySelectionController : ControllerBase
         }
 
         await tx.CommitAsync();
+        await ReloadUserAsync(email);
 
         return NoContent();
     }
@@ -505,6 +658,24 @@ public class ActivitySelectionController : ControllerBase
     [HttpPost("confirm")]
     public async Task<IActionResult> Confirm([FromBody] ConfirmRequest req)
     {
+        var confirmed = new List<ActivitySelection>();
+        IActionResult result;
+        await EnsureCachesAsync();   // antes de tomar la cola: la carga inicial también la usa
+        await HotCache.WriteGate.WaitAsync();
+        try { result = await ConfirmCore(req, confirmed); }
+        finally { HotCache.WriteGate.Release(); }
+
+        // Los mails salen fuera de la cola de escrituras (no retienen el lock).
+        if (confirmed.Count > 0)
+        {
+            await SendPilotConfirmationEmailAsync(req.Email, confirmed[0]);
+            await SendAcademicActivitiesConfirmationEmailIfCompleteAsync(req.Email);
+        }
+        return result;
+    }
+
+    private async Task<IActionResult> ConfirmCore(ConfirmRequest req, List<ActivitySelection> confirmedOut)
+    {
         if (string.IsNullOrWhiteSpace(req.Email))
             return BadRequest(new { message = "Falta el email." });
 
@@ -540,9 +711,8 @@ public class ActivitySelectionController : ControllerBase
         selection.IsConfirmed = true;
         selection.ConfirmedAt = now;
         await _db.SaveChangesAsync();
-
-        await SendPilotConfirmationEmailAsync(req.Email, selection);
-        await SendAcademicActivitiesConfirmationEmailIfCompleteAsync(req.Email);
+        await ReloadUserAsync(req.Email);
+        confirmedOut.Add(selection);
 
         return Ok(new { message = "Categoría confirmada.", confirmedAt = now, blockId = req.BlockId });
     }
@@ -709,6 +879,7 @@ public class ActivitySelectionController : ControllerBase
         }
 
         await tx.CommitAsync();
+        await ReloadUserWithGateAsync(req.TargetEmail);
 
         // Sin mail — acción administrativa excepcional, no una elección del
         // asistente. Queda igual registrada en los logs del servidor.
@@ -933,6 +1104,7 @@ public class ActivitySelectionController : ControllerBase
             foreach (var a in activities) a.TakenCount = taken[a.Id];
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
+            InvalidateAll();
             _logger.LogWarning("[AUTO-ASSIGN] {Admin} asignó {T} talleres, {S} simultáneas, {So} solidarias; {D} borradores confirmados; {F} sin lugar",
                 req.AdminEmail, assigned[TallerBlockId], assigned[SimultaneaBlockId], assigned[SolidariaBlockId], confirmedDrafts, failures.Count);
         }

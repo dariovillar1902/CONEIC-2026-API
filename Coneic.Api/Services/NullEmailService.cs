@@ -65,6 +65,15 @@ public class NullEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task<bool> TrySendAcademicActivitiesDetailedAsync(
+        string toEmail, string toName, IReadOnlyList<MailActivityRow> rows, bool desafioBarreras)
+    {
+        _logger.LogInformation(
+            "[DEV EMAIL] AcademicActivitiesDetailed → {Email} ({Name}) | {Rows}",
+            toEmail, toName, string.Join(" || ", rows.Select(r => $"{r.Label}: {r.Code} {r.Title} [{r.Info}]")));
+        return Task.FromResult(true);
+    }
+
     public Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
     {
         _logger.LogInformation(

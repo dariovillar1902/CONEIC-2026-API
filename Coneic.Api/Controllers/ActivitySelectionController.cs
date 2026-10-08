@@ -38,7 +38,13 @@ public class ActivitySelectionController : ControllerBase
     // TimeZoneInfo.FindSystemTimeZoneById, que puede fallar si el contenedor
     // no tiene tzdata instalada (ya pasó: tumbaba GetBlocks con un 500).
     private static readonly DateTime SelectionWindowOpensAt = new(2026, 10, 8, 2, 0, 0, DateTimeKind.Utc);        // mié 07/10 23:00 ART (Guía de Elección v1)
-    private static readonly DateTime SelectionWindowClosesAt = new(2026, 10, 9, 2, 0, 0, DateTimeKind.Utc);       // jue 08/10 23:00 ART (Guía de Elección v1)
+    // SELECTION_CLOSES_AT_UTC_TEST solo se usa para probar el cierre/asignación automática
+    // en una copia local; en producción no está definida.
+    public static readonly DateTime SelectionWindowClosesAt =
+        DateTime.TryParse(Environment.GetEnvironmentVariable("SELECTION_CLOSES_AT_UTC_TEST"),
+            null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var testClose)
+            ? testClose
+            : new(2026, 10, 9, 2, 0, 0, DateTimeKind.Utc);       // jue 08/10 23:00 ART (Guía de Elección v1)
 
     // Hasta las 22:57 ART del 07/10 las cuentas admin pueden elegir a modo de
     // prueba (pedido del equipo, 2026-10-07); a partir de ahí solo eligen los
@@ -89,7 +95,7 @@ public class ActivitySelectionController : ControllerBase
     private static int _refreshingUsers;
     private static readonly SemaphoreSlim FirstLoadLock = new(1, 1);
 
-    private static void InvalidateAll()
+    public static void InvalidateAll()
     {
         Interlocked.Exchange(ref _lastCatalogTicks, 0);
         Interlocked.Exchange(ref _lastUsersTicks, 0);
@@ -669,7 +675,7 @@ public class ActivitySelectionController : ControllerBase
         if (confirmed.Count > 0)
         {
             await SendPilotConfirmationEmailAsync(req.Email, confirmed[0]);
-            await SendAcademicActivitiesConfirmationEmailIfCompleteAsync(req.Email);
+            // El mail de actividades académicas lo manda ConfirmationMailService (con ritmo y reintentos).
         }
         return result;
     }
@@ -920,7 +926,7 @@ public class ActivitySelectionController : ControllerBase
     };
 
     [HttpPost("export")]
-    public IActionResult ExportSelections([FromBody] SelectionExportRequest req)
+    public async Task<IActionResult> ExportSelections([FromBody] SelectionExportRequest req)
     {
         var rows = req.Rows ?? new List<SelectionExportRow>();
         if (rows.Count > 20000)
@@ -929,10 +935,23 @@ public class ActivitySelectionController : ControllerBase
         using var wb = new ClosedXML.Excel.XLWorkbook();
         var ws = wb.Worksheets.Add("Elección de actividades");
 
+        // Datos del asistente (DNI, teléfono, salud, contacto de emergencia): se
+        // completan desde la inscripción por email, así el Excel sirve para armar
+        // listas de asistencia / seguros / logística de cada actividad.
+        var lookup = HotCache.RegistrationsLoaded
+            ? HotCache.Registrations
+            : new System.Collections.Concurrent.ConcurrentDictionary<string, Registration>();
+        if (!HotCache.RegistrationsLoaded)
+        {
+            foreach (var rg in await _db.Registrations.AsNoTracking().ToListAsync())
+                lookup[rg.Email.ToLowerInvariant()] = rg;
+        }
+
         var headers = new[]
         {
-            "Fecha de elección", "Apellido", "Nombre", "Email", "Delegación",
+            "Fecha de elección", "Apellido", "Nombre", "DNI", "Email", "Teléfono", "Fecha de nacimiento", "Delegación",
             "Categoría", "Código", "Actividad", "Estado", "Fecha de confirmación",
+            "Grupo sanguíneo", "Afecciones médicas", "Restricciones alimentarias", "Contacto de emergencia", "Tel. de emergencia",
         };
         for (var c = 0; c < headers.Length; c++)
         {
@@ -946,16 +965,25 @@ public class ActivitySelectionController : ControllerBase
         foreach (var row in rows)
         {
             var hasActivity = !string.IsNullOrEmpty(row.ActivityCode);
+            lookup.TryGetValue((row.Email ?? "").ToLowerInvariant(), out var reg);
             ws.Cell(r, 1).Value = ExcelSafe(row.SelectedAt);
             ws.Cell(r, 2).Value = ExcelSafe(row.Lastname);
             ws.Cell(r, 3).Value = ExcelSafe(row.Name);
-            ws.Cell(r, 4).Value = ExcelSafe(row.Email);
-            ws.Cell(r, 5).Value = ExcelSafe(row.Faculty);
-            ws.Cell(r, 6).Value = hasActivity ? BlockLabel(row.BlockId) : "";
-            ws.Cell(r, 7).Value = ExcelSafe(row.ActivityCode);
-            ws.Cell(r, 8).Value = hasActivity ? ExcelSafe(row.ActivityTitle) : "Sin elegir";
-            ws.Cell(r, 9).Value = !hasActivity ? "Sin elegir" : row.IsConfirmed ? "Confirmada" : "Borrador";
-            ws.Cell(r, 10).Value = ExcelSafe(row.ConfirmedAt);
+            ws.Cell(r, 4).Value = ExcelSafe(reg?.Dni);
+            ws.Cell(r, 5).Value = ExcelSafe(row.Email);
+            ws.Cell(r, 6).Value = ExcelSafe(reg?.Phone);
+            ws.Cell(r, 7).Value = reg?.BirthDate is { } bd ? bd.ToString("dd/MM/yyyy") : "";
+            ws.Cell(r, 8).Value = ExcelSafe(row.Faculty);
+            ws.Cell(r, 9).Value = hasActivity ? BlockLabel(row.BlockId) : "";
+            ws.Cell(r, 10).Value = ExcelSafe(row.ActivityCode);
+            ws.Cell(r, 11).Value = hasActivity ? ExcelSafe(row.ActivityTitle) : "Sin elegir";
+            ws.Cell(r, 12).Value = !hasActivity ? "Sin elegir" : row.IsConfirmed ? "Confirmada" : "Borrador";
+            ws.Cell(r, 13).Value = ExcelSafe(row.ConfirmedAt);
+            ws.Cell(r, 14).Value = ExcelSafe(reg?.BloodType);
+            ws.Cell(r, 15).Value = ExcelSafe(reg?.MedicalConditions);
+            ws.Cell(r, 16).Value = ExcelSafe(reg?.DietaryRestrictions);
+            ws.Cell(r, 17).Value = ExcelSafe(reg?.EmergencyContactName);
+            ws.Cell(r, 18).Value = ExcelSafe(reg?.EmergencyContactPhone);
             r++;
         }
 
@@ -1002,126 +1030,28 @@ public class ActivitySelectionController : ControllerBase
         }
 
         var dryRun = req.DryRun ?? true;
-        const int SolidariaBlockId = 4;
-        var blockIds = new[] { TallerBlockId, SimultaneaBlockId, SolidariaBlockId };
-
-        var activities = await _db.SelectableActivities
-            .Where(a => blockIds.Contains(a.BlockId))
-            .ToListAsync();
-        var taken = activities.ToDictionary(a => a.Id, a => a.TakenCount);
-
-        var people = await _db.Registrations
-            .Where(r => r.Status == "Paid")
-            .Select(r => new { r.Email, r.InterestedInMaccaferri })
-            .ToListAsync();
-        var emails = people.Select(p => p.Email.ToLower()).ToHashSet();
-
-        var allSelections = await _db.ActivitySelections
-            .Where(s => blockIds.Contains(s.BlockId))
-            .ToListAsync();
-        var byUser = allSelections
-            .Where(s => emails.Contains(s.UserEmail.ToLower()))
-            .GroupBy(s => s.UserEmail.ToLower())
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var rng = Random.Shared;
-        var now = DateTime.Now;
-        var confirmedDrafts = 0;
-        var assigned = new Dictionary<int, int> { [TallerBlockId] = 0, [SimultaneaBlockId] = 0, [SolidariaBlockId] = 0 };
-        var failures = new List<string>();
-        var toAdd = new List<ActivitySelection>();
-
-        bool HasRoom(SelectableActivity a) => taken[a.Id] < a.Capacity;
-        SelectableActivity? Pick(IEnumerable<SelectableActivity> pool)
-        {
-            var open = pool.Where(HasRoom).ToList();
-            return open.Count == 0 ? null : open[rng.Next(open.Count)];
-        }
-
-        foreach (var person in people.OrderBy(_ => rng.Next()))
-        {
-            var email = person.Email;
-            var mine = byUser.TryGetValue(email.ToLower(), out var list) ? list : new List<ActivitySelection>();
-            ActivitySelection? Existing(int blockId) => mine.FirstOrDefault(s => s.BlockId == blockId);
-
-            // Los borradores se confirman como están.
-            foreach (var draft in mine.Where(s => !s.IsConfirmed))
-            {
-                draft.IsConfirmed = true;
-                draft.ConfirmedAt = now;
-                confirmedDrafts++;
-            }
-
-            if (!person.InterestedInMaccaferri)
-            {
-                var tallerSel = Existing(TallerBlockId);
-                var simSel = Existing(SimultaneaBlockId);
-                SelectableActivity? taller = tallerSel == null ? null : activities.First(a => a.Id == tallerSel.ActivityId);
-
-                if (taller == null)
-                {
-                    // Solo sirve un Taller cuya Familia todavía tenga alguna Simultánea con cupo.
-                    var viable = activities
-                        .Where(a => a.BlockId == TallerBlockId && HasRoom(a)
-                            && activities.Any(s => s.BlockId == SimultaneaBlockId && s.Family == a.Family && HasRoom(s)))
-                        .ToList();
-                    if (simSel != null)
-                    {
-                        var simFamily = activities.First(a => a.Id == simSel.ActivityId).Family;
-                        viable = viable.Where(a => a.Family == simFamily).ToList();
-                    }
-                    taller = Pick(viable);
-                    if (taller == null) { failures.Add($"{email}: sin Taller con cupo"); continue; }
-                    taken[taller.Id]++;
-                    var sel = new ActivitySelection { UserEmail = email, BlockId = TallerBlockId, ActivityId = taller.Id, IsConfirmed = true, ConfirmedAt = now };
-                    toAdd.Add(sel); mine.Add(sel); assigned[TallerBlockId]++;
-                }
-
-                if (simSel == null)
-                {
-                    var sim = Pick(activities.Where(a => a.BlockId == SimultaneaBlockId && a.Family == taller.Family));
-                    if (sim == null) { failures.Add($"{email}: sin Simultánea con cupo en la familia {taller.Family}"); continue; }
-                    taken[sim.Id]++;
-                    var sel = new ActivitySelection { UserEmail = email, BlockId = SimultaneaBlockId, ActivityId = sim.Id, IsConfirmed = true, ConfirmedAt = now };
-                    toAdd.Add(sel); mine.Add(sel); assigned[SimultaneaBlockId]++;
-                }
-            }
-
-            if (Existing(SolidariaBlockId) == null)
-            {
-                var sol = Pick(activities.Where(a => a.BlockId == SolidariaBlockId));
-                if (sol == null) { failures.Add($"{email}: sin Solidaria con cupo"); continue; }
-                taken[sol.Id]++;
-                var sel = new ActivitySelection { UserEmail = email, BlockId = SolidariaBlockId, ActivityId = sol.Id, IsConfirmed = true, ConfirmedAt = now };
-                toAdd.Add(sel); mine.Add(sel); assigned[SolidariaBlockId]++;
-            }
-        }
+        AutoAssignResult result;
+        await HotCache.WriteGate.WaitAsync();
+        try { result = await AutoAssignRunner.RunAsync(_db, dryRun); }
+        finally { HotCache.WriteGate.Release(); }
 
         if (!dryRun)
         {
-            using var tx = await _db.Database.BeginTransactionAsync();
-            _db.ActivitySelections.AddRange(toAdd);
-            foreach (var a in activities) a.TakenCount = taken[a.Id];
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
             InvalidateAll();
-            _logger.LogWarning("[AUTO-ASSIGN] {Admin} asignó {T} talleres, {S} simultáneas, {So} solidarias; {D} borradores confirmados; {F} sin lugar",
-                req.AdminEmail, assigned[TallerBlockId], assigned[SimultaneaBlockId], assigned[SolidariaBlockId], confirmedDrafts, failures.Count);
-        }
-        else
-        {
-            _db.ChangeTracker.Clear();
+            _logger.LogWarning("[AUTO-ASSIGN manual] {Admin}: talleres={T} simultaneas={S} solidarias={So}",
+                req.AdminEmail, result.Talleres, result.Simultaneas, result.Solidarias);
         }
 
         return Ok(new
         {
             dryRun,
-            people = people.Count,
-            confirmedDrafts,
-            assignedTalleres = assigned[TallerBlockId],
-            assignedSimultaneas = assigned[SimultaneaBlockId],
-            assignedSolidarias = assigned[SolidariaBlockId],
-            failures,
+            people = result.People,
+            confirmedDrafts = result.ConfirmedDrafts,
+            assignedTalleres = result.Talleres,
+            assignedSimultaneas = result.Simultaneas,
+            assignedSolidarias = result.Solidarias,
+            otherFamilyFallback = result.MixedFamily,
+            failures = result.Failures,
         });
     }
 

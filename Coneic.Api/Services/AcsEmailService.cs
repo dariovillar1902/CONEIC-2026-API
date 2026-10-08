@@ -71,6 +71,13 @@ public class AcsEmailService : IEmailService
         await SendAsync(toEmail, toName, subject, html);
     }
 
+    public async Task<bool> TrySendAcademicActivitiesDetailedAsync(
+        string toEmail, string toName, IReadOnlyList<MailActivityRow> rows, bool desafioBarreras)
+    {
+        var (subject, html) = EmailTemplates.AcademicActivitiesConfirmedDetailed(toName, rows, desafioBarreras);
+        return await SendCoreAsync(toEmail, toName, subject, html);
+    }
+
     public async Task SendPasswordResetAsync(string toEmail, string toName, string newPassword)
     {
         var (subject, html) = EmailTemplates.PasswordReset(toName, toEmail, newPassword);
@@ -80,33 +87,48 @@ public class AcsEmailService : IEmailService
     // ── Método interno ─────────────────────────────────────────────────────────
 
     private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
+        => await SendCoreAsync(toEmail, toName, subject, htmlBody);
+
+    // Devuelve true solo si ACS aceptó el mensaje. Ante 429 (límite de envíos
+    // por minuto) espera y reintenta: antes se perdía el mail sin avisar.
+    private async Task<bool> SendCoreAsync(string toEmail, string toName, string subject, string htmlBody)
     {
-        try
+        for (var attempt = 1; attempt <= 4; attempt++)
         {
-            var message = new EmailMessage(
-                senderAddress: SenderAddress,
-                recipients: new EmailRecipients(new[]
-                {
-                    new EmailAddress(toEmail, toName)
-                }),
-                content: new EmailContent(subject)
-                {
-                    Html = htmlBody,
-                    PlainText = "Abrí este email en un cliente que soporte HTML para verlo correctamente."
-                });
+            try
+            {
+                var message = new EmailMessage(
+                    senderAddress: SenderAddress,
+                    recipients: new EmailRecipients(new[]
+                    {
+                        new EmailAddress(toEmail, toName)
+                    }),
+                    content: new EmailContent(subject)
+                    {
+                        Html = htmlBody,
+                        PlainText = "Abrí este email en un cliente que soporte HTML para verlo correctamente."
+                    });
 
-            message.Headers.Add("From", $"{SenderName} <{SenderAddress}>");
+                message.Headers.Add("From", $"{SenderName} <{SenderAddress}>");
 
-            var operation = await _client.SendAsync(WaitUntil.Started, message);
-            _logger.LogInformation(
-                "Email enviado a {Email} | MessageId: {MessageId} | Asunto: {Subject}",
-                toEmail, operation.Id, subject);
+                var operation = await _client.SendAsync(WaitUntil.Started, message);
+                _logger.LogInformation(
+                    "Email enviado a {Email} | MessageId: {MessageId} | Asunto: {Subject}",
+                    toEmail, operation.Id, subject);
+                return true;
+            }
+            catch (RequestFailedException ex) when (ex.Status == 429 && attempt < 4)
+            {
+                _logger.LogWarning("ACS 429 enviando a {Email} (intento {Attempt}); espera y reintenta", toEmail, attempt);
+                await Task.Delay(TimeSpan.FromSeconds(20 * attempt));
+            }
+            catch (Exception ex)
+            {
+                // Loggear pero no propagar: el email falla sin bloquear la operación principal.
+                _logger.LogError(ex, "Error enviando email a {Email} | Asunto: {Subject}", toEmail, subject);
+                return false;
+            }
         }
-        catch (Exception ex)
-        {
-            // Loggear pero no propagar: el email falla silenciosamente
-            // para no bloquear la operación principal (registro, pago, etc.)
-            _logger.LogError(ex, "Error enviando email a {Email} | Asunto: {Subject}", toEmail, subject);
-        }
+        return false;
     }
 }

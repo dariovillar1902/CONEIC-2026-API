@@ -526,6 +526,49 @@ internal static class EmailTemplates
         return (subject, Wrap("Actividades académicas confirmadas — CONEIC XVIII", banner, body));
     }
 
+    public static (string Subject, string Html) AcademicActivitiesConfirmedDetailed(
+        string toName, IReadOnlyList<MailActivityRow> rows, bool desafioBarreras)
+    {
+        var subject = "Tus actividades académicas elegidas – CONEIC XVIII";
+        var banner  = StatusBanner("#E8F4EC", "#1a6b35", "✅ &nbsp;Actividades académicas confirmadas");
+        static string E(string? v) => System.Net.WebUtility.HtmlEncode(v ?? "");
+
+        var rowsHtml = string.Concat(rows.Select(r => $"""
+            <tr>
+              <td style="padding:12px 0;border-top:1px solid #eee;">
+                <p style="margin:0 0 2px;font-size:11px;font-weight:bold;letter-spacing:1px;
+                          text-transform:uppercase;color:{ColorGold};">{E(r.Label)}</p>
+                <p style="margin:0;font-size:15px;color:{ColorText};"><strong>{E(r.Code)}</strong> — {E(r.Title)}</p>
+                {(string.IsNullOrWhiteSpace(r.Speaker) ? "" : $"<p style=\"margin:2px 0 0;font-size:13px;color:{ColorMuted};\">{E(r.Speaker)}</p>")}
+                {(string.IsNullOrWhiteSpace(r.Info) ? "" : $"<p style=\"margin:4px 0 0;font-size:13px;color:{ColorMuted};\">{E(r.Info)}</p>")}
+              </td>
+            </tr>
+            """));
+
+        var body = $"""
+            <p style="margin:0 0 20px;font-size:16px;color:{BgHeader};">
+              Hola, <strong>{E(toName)}</strong>
+            </p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:{ColorText};">
+              Quedó registrada tu selección definitiva de actividades académicas:
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 24px;">
+              {rowsHtml}
+            </table>
+            {WarningBox($"""
+              <p style="margin:0;font-size:13px;color:{ColorMuted};line-height:1.7;">
+                Esta selección ya no se puede modificar. Podés ver tu cronograma personal en "Mi Cronograma"
+                dentro de la web. Ante cualquier duda o inconveniente, canalizalo a través de tu delegado/a.
+              </p>
+            """)}
+            <p style="margin:0;font-size:15px;line-height:1.75;color:{BgHeader};font-weight:bold;">
+              ¡Nos vemos en octubre!
+            </p>
+            """;
+
+        return (subject, Wrap("Actividades académicas confirmadas — CONEIC XVIII", banner, body));
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 6. Reseteo de contraseña (flujo autoservicio "Olvidé mi contraseña")
     // ═══════════════════════════════════════════════════════════════════════════

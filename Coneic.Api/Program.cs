@@ -46,6 +46,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
         .AddInterceptors(new SqlitePragmaInterceptor()));
 
+// Mails de confirmación de actividades (con registro propio y reintentos) y asignación
+// automática al cierre de la elección (jueves 08/10 23:00 ART).
+builder.Services.AddHostedService<ConfirmationMailService>();
+builder.Services.AddHostedService<AutoAssignScheduler>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",

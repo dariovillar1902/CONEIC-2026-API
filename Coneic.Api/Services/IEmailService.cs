@@ -28,6 +28,13 @@ public interface IEmailService
         string? simultaneaCode, string? simultaneaTitle,
         string? solidariaCode, string? solidariaTitle, bool desafioBarreras = false);
 
+    /// <summary>
+    /// Mail de actividades académicas confirmadas, con sede y hora de inicio de cada una.
+    /// Devuelve true solo si el servicio de correo aceptó el envío (reintenta ante 429).
+    /// </summary>
+    Task<bool> TrySendAcademicActivitiesDetailedAsync(
+        string toEmail, string toName, IReadOnlyList<MailActivityRow> rows, bool desafioBarreras);
+
     /// <summary>Envía la nueva contraseña generada por el flujo de "olvidé mi contraseña".</summary>
     Task SendPasswordResetAsync(string toEmail, string toName, string newPassword);
 }
@@ -38,3 +45,6 @@ public record RegistrationEmailData(
     string Faculty,
     DelegationInfo? Delegation
 );
+
+/// <summary>Una actividad en el mail de confirmación: rótulo, código, título, disertante y "Sede · Hora · Punto de encuentro".</summary>
+public record MailActivityRow(string Label, string Code, string Title, string? Speaker, string? Info);

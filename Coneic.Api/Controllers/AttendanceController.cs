@@ -171,6 +171,84 @@ public class AttendanceController : ControllerBase
         return Ok(new { found = true, registrant = ToInfo(reg), sessions = records });
     }
 
+    // ── Módulo de asistencia (planillas en papel) ────────────────────────────────
+
+    private Task<bool> IsStaffAsync(string? email) =>
+        string.IsNullOrWhiteSpace(email)
+            ? Task.FromResult(false)
+            : _db.Users.AnyAsync(u => u.Email.ToLower() == email.Trim().ToLower()
+                                      && (u.Role == "admin" || u.Role == "tesoreria"));
+
+    /// <summary>Toda la grilla persona × instancia en una sola llamada (para las vistas por persona y por evento).</summary>
+    [HttpGet("matrix")]
+    public async Task<IActionResult> Matrix([FromQuery] string requesterEmail)
+    {
+        if (!await IsStaffAsync(requesterEmail)) return StatusCode(403, new { message = "Solo administradores." });
+
+        var sessions = await _db.AttendanceSessions.AsNoTracking().OrderBy(s => s.Id)
+            .Select(s => new { s.Id, s.Name }).ToListAsync();
+        var records = await _db.AttendanceRecords.AsNoTracking()
+            .Select(r => new { r.RegistrationId, r.SessionId, r.CheckedInAt }).ToListAsync();
+        var bySession = records.GroupBy(r => r.RegistrationId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var people = (await _db.Registrations.AsNoTracking()
+                .Where(r => r.Status == "Paid")
+                .Select(r => new { r.Id, r.Name, r.Lastname, r.Faculty, r.Dni })
+                .ToListAsync())
+            .Select(r => new
+            {
+                r.Id, r.Name, r.Lastname, r.Faculty, r.Dni,
+                Sessions = bySession.TryGetValue(r.Id, out var list) ? list.Select(x => x.SessionId).ToList() : new List<int>(),
+            })
+            .OrderBy(r => r.Lastname).ThenBy(r => r.Name)
+            .ToList();
+
+        return Ok(new { sessions, people });
+    }
+
+    public record BulkCheckInRequest(int SessionId, List<string> Codes, string? CheckedInBy);
+
+    /// <summary>Carga una planilla: lista de números (ID de inscripción o DNI). Idempotente por persona e instancia.</summary>
+    [HttpPost("bulk-checkin")]
+    public async Task<IActionResult> BulkCheckIn([FromBody] BulkCheckInRequest req)
+    {
+        if (!await IsStaffAsync(req.CheckedInBy)) return StatusCode(403, new { message = "Solo administradores." });
+        if (!await _db.AttendanceSessions.AnyAsync(s => s.Id == req.SessionId))
+            return BadRequest(new { message = "La instancia de asistencia indicada no existe." });
+
+        var already = (await _db.AttendanceRecords.Where(r => r.SessionId == req.SessionId)
+            .Select(r => r.RegistrationId).ToListAsync()).ToHashSet();
+        var added = new List<object>();
+        var duplicates = 0;
+        var notFound = new List<string>();
+
+        foreach (var code in (req.Codes ?? new()).Select(c => (c ?? "").Trim()).Where(c => c.Length > 0).Distinct())
+        {
+            var reg = await FindByCodeAsync(code);
+            if (reg == null) { notFound.Add(code); continue; }
+            if (!already.Add(reg.Id)) { duplicates++; continue; }
+            _db.AttendanceRecords.Add(new AttendanceRecord
+            {
+                RegistrationId = reg.Id, SessionId = req.SessionId, CheckedInBy = req.CheckedInBy,
+            });
+            added.Add(new { code, reg.Id, reg.Name, reg.Lastname, reg.Faculty, reg.Status });
+        }
+        await _db.SaveChangesAsync();
+        return Ok(new { added, duplicates, notFound });
+    }
+
+    /// <summary>Quita una asistencia cargada por error.</summary>
+    [HttpDelete("checkin")]
+    public async Task<IActionResult> RemoveCheckIn([FromQuery] int registrationId, [FromQuery] int sessionId, [FromQuery] string requesterEmail)
+    {
+        if (!await IsStaffAsync(requesterEmail)) return StatusCode(403, new { message = "Solo administradores." });
+        var rec = await _db.AttendanceRecords.FirstOrDefaultAsync(r => r.RegistrationId == registrationId && r.SessionId == sessionId);
+        if (rec == null) return NotFound();
+        _db.AttendanceRecords.Remove(rec);
+        await _db.SaveChangesAsync();
+        return Ok(new { removed = true });
+    }
+
     [HttpGet("stats")]
     public async Task<IActionResult> Stats([FromQuery] int? sessionId)
     {

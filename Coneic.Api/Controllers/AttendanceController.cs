@@ -2,6 +2,7 @@ using Coneic.Api.Data;
 using Coneic.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace Coneic.Api.Controllers;
 
@@ -179,6 +180,21 @@ public class AttendanceController : ControllerBase
             : _db.Users.AnyAsync(u => u.Email.ToLower() == email.Trim().ToLower()
                                       && (u.Role == "admin" || u.Role == "tesoreria"));
 
+    // Tomas por actividad del miércoles: "Taller 1.01 · título", "Simultánea 2.04 · …", "Solidaria 3.09 · …".
+    private static readonly Regex ActivitySessionName = new(@"^(Taller|Simultánea|Solidaria) (\d\.\d{2}) ", RegexOptions.Compiled);
+
+    private async Task<Dictionary<string, List<string>>> EnrolledCodesByEmailAsync()
+    {
+        var codeById = await _db.SelectableActivities.AsNoTracking()
+            .Where(a => a.BlockId >= 2 && a.BlockId <= 4).ToDictionaryAsync(a => a.Id, a => a.Code);
+        var picks = await _db.ActivitySelections.AsNoTracking()
+            .Where(x => x.BlockId >= 2 && x.BlockId <= 4)
+            .Select(x => new { x.UserEmail, x.ActivityId }).ToListAsync();
+        return picks.GroupBy(x => x.UserEmail.ToLower()).ToDictionary(
+            g => g.Key,
+            g => g.Select(x => codeById.GetValueOrDefault(x.ActivityId)).Where(c => c != null).Select(c => c!).ToList());
+    }
+
     /// <summary>Toda la grilla persona × instancia en una sola llamada (para las vistas por persona y por evento).</summary>
     [HttpGet("matrix")]
     public async Task<IActionResult> Matrix([FromQuery] string requesterEmail)
@@ -190,14 +206,16 @@ public class AttendanceController : ControllerBase
         var records = await _db.AttendanceRecords.AsNoTracking()
             .Select(r => new { r.RegistrationId, r.SessionId, r.CheckedInAt }).ToListAsync();
         var bySession = records.GroupBy(r => r.RegistrationId).ToDictionary(g => g.Key, g => g.ToList());
+        var enrolled = await EnrolledCodesByEmailAsync();
 
         var people = (await _db.Registrations.AsNoTracking()
                 .Where(r => r.Status == "Paid")
-                .Select(r => new { r.Id, r.Name, r.Lastname, r.Faculty, r.Dni })
+                .Select(r => new { r.Id, r.Name, r.Lastname, r.Faculty, r.Dni, r.Email })
                 .ToListAsync())
             .Select(r => new
             {
                 r.Id, r.Name, r.Lastname, r.Faculty, r.Dni,
+                Enrolled = enrolled.TryGetValue(r.Email.ToLower(), out var codes) ? codes : new List<string>(),
                 Sessions = bySession.TryGetValue(r.Id, out var list) ? list.Select(x => x.SessionId).ToList() : new List<int>(),
             })
             .OrderBy(r => r.Lastname).ThenBy(r => r.Name)
@@ -271,11 +289,20 @@ public class AttendanceController : ControllerBase
         var mine = (await _db.AttendanceRecords.AsNoTracking()
             .Where(r => r.RegistrationId == reg.Id).Select(r => r.SessionId).ToListAsync()).ToHashSet();
 
-        var items = (await _db.AttendanceSessions.AsNoTracking()
-                .Where(s => takenIds.Contains(s.Id)).OrderBy(s => s.Id)
-                .Select(s => new { s.Id, s.Name }).ToListAsync())
-            .Select(s => new { name = s.Name, present = mine.Contains(s.Id) })
-            .ToList();
+        var myCodes = (await EnrolledCodesByEmailAsync()).GetValueOrDefault(mail) ?? new List<string>();
+
+        // Las tomas por actividad solo se informan si la persona estaba inscripta en esa actividad,
+        // con un nombre genérico (Taller / Simultánea / Solidaria).
+        var items = new List<object>();
+        foreach (var s in await _db.AttendanceSessions.AsNoTracking()
+                     .Where(x => takenIds.Contains(x.Id)).OrderBy(x => x.Id)
+                     .Select(x => new { x.Id, x.Name }).ToListAsync())
+        {
+            var m = ActivitySessionName.Match(s.Name);
+            if (!m.Success) { items.Add(new { name = s.Name, present = mine.Contains(s.Id) }); continue; }
+            if (!myCodes.Contains(m.Groups[2].Value)) continue;
+            items.Add(new { name = $"Miércoles 14 · {m.Groups[1].Value}", present = mine.Contains(s.Id) });
+        }
 
         return Ok(new { found = true, items });
     }

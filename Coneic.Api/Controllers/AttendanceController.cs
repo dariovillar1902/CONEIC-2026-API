@@ -249,6 +249,37 @@ public class AttendanceController : ControllerBase
         return Ok(new { removed = true });
     }
 
+    /// <summary>
+    /// Estado de asistencia de la propia persona. Solo se informan las tomas que ya se
+    /// realizaron (tienen al menos un registro) y nada sobre cuántas habrá en total:
+    /// los asistentes no deben conocer ese dato.
+    /// </summary>
+    [HttpGet("mine")]
+    public async Task<IActionResult> Mine([FromQuery] string email)
+    {
+        var mail = (email ?? string.Empty).Trim().ToLower();
+        if (mail.Length == 0) return BadRequest(new { message = "Email requerido." });
+
+        var reg = await _db.Registrations.AsNoTracking()
+            .Where(r => r.Email.ToLower() == mail)
+            .Select(r => new { r.Id })
+            .FirstOrDefaultAsync();
+        if (reg == null) return Ok(new { found = false, items = Array.Empty<object>() });
+
+        var takenIds = await _db.AttendanceRecords.AsNoTracking()
+            .Select(r => r.SessionId).Distinct().ToListAsync();
+        var mine = (await _db.AttendanceRecords.AsNoTracking()
+            .Where(r => r.RegistrationId == reg.Id).Select(r => r.SessionId).ToListAsync()).ToHashSet();
+
+        var items = (await _db.AttendanceSessions.AsNoTracking()
+                .Where(s => takenIds.Contains(s.Id)).OrderBy(s => s.Id)
+                .Select(s => new { s.Id, s.Name }).ToListAsync())
+            .Select(s => new { name = s.Name, present = mine.Contains(s.Id) })
+            .ToList();
+
+        return Ok(new { found = true, items });
+    }
+
     [HttpGet("stats")]
     public async Task<IActionResult> Stats([FromQuery] int? sessionId)
     {

@@ -1,5 +1,6 @@
 using Coneic.Api.Data;
 using Coneic.Api.Models;
+using Coneic.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -75,6 +76,20 @@ public class AttendanceController : ControllerBase
         _db.AttendanceSessions.Add(session);
         await _db.SaveChangesAsync();
         return Ok(session);
+    }
+
+    /// <summary>Borra una toma creada de más, solo si todavía no tiene asistencia cargada.</summary>
+    [HttpDelete("sessions/{id:int}")]
+    public async Task<IActionResult> DeleteSession(int id, [FromQuery] string requesterEmail)
+    {
+        if (!await IsStaffAsync(requesterEmail)) return StatusCode(403, new { message = "Solo administradores." });
+        var session = await _db.AttendanceSessions.FindAsync(id);
+        if (session == null) return NotFound();
+        if (await _db.AttendanceRecords.AnyAsync(r => r.SessionId == id))
+            return Conflict(new { message = "La toma ya tiene asistencia cargada." });
+        _db.AttendanceSessions.Remove(session);
+        await _db.SaveChangesAsync();
+        return Ok(new { removed = true });
     }
 
     // ── Lookup (previsualizar antes de confirmar) ───────────────────────────────
@@ -278,6 +293,9 @@ public class AttendanceController : ControllerBase
         var mail = (email ?? string.Empty).Trim().ToLower();
         if (mail.Length == 0) return BadRequest(new { message = "Email requerido." });
 
+        // Por ahora solo el equipo organizador puede ver asistencia propia; los asistentes y delegados no.
+        if (!await IsStaffAsync(mail)) return Ok(new { found = false, items = Array.Empty<object>() });
+
         var reg = await _db.Registrations.AsNoTracking()
             .Where(r => r.Email.ToLower() == mail)
             .Select(r => new { r.Id })
@@ -305,6 +323,23 @@ public class AttendanceController : ControllerBase
         }
 
         return Ok(new { found = true, items });
+    }
+
+    /// <summary>Quién alcanza el % de asistencia mínimo para el certificado (solo admins).</summary>
+    [HttpGet("certificates")]
+    public async Task<IActionResult> Certificates([FromQuery] string requesterEmail, [FromQuery] bool onlyLoaded = false)
+    {
+        if (!await IsStaffAsync(requesterEmail)) return StatusCode(403, new { message = "Solo administradores." });
+        return Ok(await AttendanceCertificates.BuildAsync(_db, onlyLoaded));
+    }
+
+    [HttpGet("certificates/export")]
+    public async Task<IActionResult> ExportCertificates([FromQuery] string requesterEmail, [FromQuery] bool onlyLoaded = false)
+    {
+        if (!await IsStaffAsync(requesterEmail)) return StatusCode(403, new { message = "Solo administradores." });
+        var bytes = AttendanceCertificates.ToExcel(await AttendanceCertificates.BuildAsync(_db, onlyLoaded));
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Certificados_asistencia_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
     }
 
     [HttpGet("stats")]

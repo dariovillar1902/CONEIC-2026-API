@@ -196,15 +196,15 @@ public class AttendanceController : ControllerBase
                                       && (u.Role == "admin" || u.Role == "tesoreria"));
 
     // Tomas por actividad del miércoles: "Taller 1.01 · título", "Simultánea 2.04 · …", "Solidaria 3.09 · …".
-    private static readonly Regex ActivitySessionName = new(@"^(Taller|Simultánea|Solidaria) (\d\.\d{2}) ", RegexOptions.Compiled);
+    private static readonly Regex ActivitySessionName = new(@"^(Taller|Simultánea|Solidaria|Visita técnica) (\d\.\d{2}) ", RegexOptions.Compiled);
 
     private async Task<Dictionary<string, List<string>>> EnrolledCodesByEmailAsync()
     {
         var codeById = await _db.SelectableActivities.AsNoTracking()
-            .Where(a => a.BlockId >= 2 && a.BlockId <= 4).ToDictionaryAsync(a => a.Id, a => a.Code);
-        var picks = await _db.ActivitySelections.AsNoTracking()
-            .Where(x => x.BlockId >= 2 && x.BlockId <= 4)
-            .Select(x => new { x.UserEmail, x.ActivityId }).ToListAsync();
+            .Where(a => a.BlockId >= 1 && a.BlockId <= 4).ToDictionaryAsync(a => a.Id, a => a.Code);
+        var all = await _db.ActivitySelections.AsNoTracking()
+            .Select(x => new { x.UserEmail, x.ActivityId, x.BlockId, x.IsConfirmed }).ToListAsync();
+        var picks = all.Where(x => x.BlockId >= 1 && x.BlockId <= 4 && (x.BlockId != 1 || x.IsConfirmed)).ToList();
         return picks.GroupBy(x => x.UserEmail.ToLower()).ToDictionary(
             g => g.Key,
             g => g.Select(x => codeById.GetValueOrDefault(x.ActivityId)).Where(c => c != null).Select(c => c!).ToList());
@@ -319,7 +319,8 @@ public class AttendanceController : ControllerBase
             var m = ActivitySessionName.Match(s.Name);
             if (!m.Success) { items.Add(new { name = s.Name, present = mine.Contains(s.Id) }); continue; }
             if (!myCodes.Contains(m.Groups[2].Value)) continue;
-            items.Add(new { name = $"Miércoles 14 · {m.Groups[1].Value}", present = mine.Contains(s.Id) });
+            var day = m.Groups[1].Value == "Visita técnica" ? "Jueves 15" : "Miércoles 14";
+            items.Add(new { name = $"{day} · {m.Groups[1].Value}", present = mine.Contains(s.Id) });
         }
 
         return Ok(new { found = true, items });

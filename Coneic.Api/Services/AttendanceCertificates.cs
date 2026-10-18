@@ -30,13 +30,12 @@ public static class AttendanceCertificates
     public static readonly string[] FixedSessions =
     {
         "Martes 13 · Acreditación", "Martes 13 · Salida a almuerzo", "Martes 13 · Vuelta de almuerzo", "Martes 13 · Fin de jornada",
-        "Jueves 15 · Visita técnica",
         "Viernes 16 · Inicio de mañana", "Viernes 16 · Salida a almuerzo", "Viernes 16 · Vuelta de almuerzo",
     };
 
-    private const string VisitSession = "Jueves 15 · Visita técnica";
-    private static readonly string[] WednesdayTypes = { "Taller", "Simultánea", "Solidaria" };
-    private static readonly Regex ActivitySession = new(@"^(Taller|Simultánea|Solidaria) (\d\.\d{2}) ", RegexOptions.Compiled);
+    // Una toma por actividad: Taller, Simultánea y Solidaria (miércoles) y Visita técnica (jueves, una por visita).
+    private static readonly string[] ActivityTypes = { "Taller", "Simultánea", "Solidaria", "Visita técnica" };
+    private static readonly Regex ActivitySession = new(@"^(Taller|Simultánea|Solidaria|Visita técnica) (\d\.\d{2}) ", RegexOptions.Compiled);
 
     public static async Task<CertificateReport> BuildAsync(ApplicationDbContext db, bool onlyLoaded)
     {
@@ -54,15 +53,14 @@ public static class AttendanceCertificates
         }
 
         var codeById = await db.SelectableActivities.AsNoTracking()
-            .Where(a => a.BlockId >= 2 && a.BlockId <= 4).ToDictionaryAsync(a => a.Id, a => (a.Code, a.BlockId));
-        var picks = (await db.ActivitySelections.AsNoTracking().Where(s => s.BlockId >= 2 && s.BlockId <= 4)
-                .Select(s => new { s.UserEmail, s.ActivityId }).ToListAsync())
-            .Where(p => codeById.ContainsKey(p.ActivityId))
+            .Where(a => a.BlockId >= 1 && a.BlockId <= 4).ToDictionaryAsync(a => a.Id, a => (a.Code, a.BlockId));
+        // La visita técnica solo cuenta si está confirmada.
+        // Filtro simple en SQL y el resto en memoria (las consultas con condiciones compuestas fallan en el plan B1).
+        var picks = (await db.ActivitySelections.AsNoTracking()
+                .Select(s => new { s.UserEmail, s.ActivityId, s.BlockId, s.IsConfirmed }).ToListAsync())
+            .Where(p => p.BlockId >= 1 && p.BlockId <= 4 && (p.BlockId != 1 || p.IsConfirmed) && codeById.ContainsKey(p.ActivityId))
             .GroupBy(p => p.UserEmail.ToLower())
             .ToDictionary(g => g.Key, g => g.Select(p => codeById[p.ActivityId]).ToList());
-        var withVisit = (await db.ActivitySelections.AsNoTracking().Where(s => s.BlockId == 1 && s.IsConfirmed)
-            .Select(s => s.UserEmail).ToListAsync()).Select(e => e.ToLower()).ToHashSet();
-
         bool Counts(int? id) => id != null && (!onlyLoaded || recordCount.ContainsKey(id.Value));
 
         var people = new List<CertificatePerson>();
@@ -80,7 +78,6 @@ public static class AttendanceCertificates
             foreach (var name in FixedSessions)
             {
                 var id = fixedIds[name];
-                if (name == VisitSession && !withVisit.Contains(mail)) { cells[name] = "—"; continue; }
                 if (!Counts(id)) { cells[name] = id == null ? "sin toma" : "sin cargar"; continue; }
                 expected++;
                 var ok = mine.Contains(id!.Value);
@@ -89,9 +86,9 @@ public static class AttendanceCertificates
             }
 
             var chosen = picks.GetValueOrDefault(mail) ?? new();
-            foreach (var type in WednesdayTypes)
+            foreach (var type in ActivityTypes)
             {
-                var block = type == "Taller" ? 2 : type == "Simultánea" ? 3 : 4;
+                var block = type == "Taller" ? 2 : type == "Simultánea" ? 3 : type == "Solidaria" ? 4 : 1;
                 var pick = chosen.FirstOrDefault(c => c.BlockId == block);
                 if (pick.Code == null) { cells[type] = "—"; continue; }
                 var ids = activityIds.GetValueOrDefault(pick.Code) ?? new List<int>();
@@ -108,7 +105,7 @@ public static class AttendanceCertificates
                 expected, present, percent, expected > 0 && present * 100 >= expected * ThresholdPercent, cells));
         }
 
-        var columns = FixedSessions.Concat(WednesdayTypes).ToList();
+        var columns = FixedSessions.Concat(ActivityTypes).ToList();
         var summary = sessions.Where(s => FixedSessions.Contains(s.Name) || ActivitySession.IsMatch(s.Name))
             .Select(s => new CertificateSession(s.Name, recordCount.GetValueOrDefault(s.Id), recordCount.ContainsKey(s.Id)))
             .OrderBy(s => s.Name).ToList();
@@ -155,7 +152,7 @@ public static class AttendanceCertificates
         var notes = new[]
         {
             $"Certificado: asistió a, al menos, el {ThresholdPercent}% de las tomas de asistencia que le correspondían.",
-            "Tomas por persona: Martes 13 (4), Miércoles 14 (una por su Taller, Simultánea y Solidaria), Jueves 15 (visita técnica, solo si tiene una confirmada) y Viernes 16 (3).",
+            "Tomas por persona: Martes 13 (4), Miércoles 14 (una por su Taller, Simultánea y Solidaria), Jueves 15 (la toma de su visita técnica, solo si tiene una confirmada) y Viernes 16 (3).",
             report.OnlyLoaded
                 ? "Este archivo cuenta SOLO las tomas que ya tienen asistencia cargada; las demás figuran como 'sin cargar'."
                 : "Este archivo cuenta TODAS las tomas esperadas; una toma sin asistencia cargada cuenta como ausencia para todos.",

@@ -46,10 +46,19 @@ public static class AttendanceCertificates
 
         var fixedIds = FixedSessions.ToDictionary(n => n, n => sessions.FirstOrDefault(s => s.Name == n)?.Id);
         var activityIds = new Dictionary<string, List<int>>();   // código -> ids de la toma (por si hubiera repetidas)
+        var typeIds = new Dictionary<string, List<int>>();       // tipo (Taller, Solidaria…) -> todas sus tomas
+        var codeOfSession = new Dictionary<int, string>();
         foreach (var s in sessions)
         {
             var m = ActivitySession.Match(s.Name);
-            if (m.Success) { if (!activityIds.TryGetValue(m.Groups[2].Value, out var l)) activityIds[m.Groups[2].Value] = l = new(); l.Add(s.Id); }
+            if (m.Success)
+            {
+                if (!activityIds.TryGetValue(m.Groups[2].Value, out var l)) activityIds[m.Groups[2].Value] = l = new();
+                l.Add(s.Id);
+                if (!typeIds.TryGetValue(m.Groups[1].Value, out var tl)) typeIds[m.Groups[1].Value] = tl = new();
+                tl.Add(s.Id);
+                codeOfSession[s.Id] = m.Groups[2].Value;
+            }
         }
 
         var codeById = await db.SelectableActivities.AsNoTracking()
@@ -92,12 +101,18 @@ public static class AttendanceCertificates
                 var pick = chosen.FirstOrDefault(c => c.BlockId == block);
                 if (pick.Code == null) { cells[type] = "—"; continue; }
                 var ids = activityIds.GetValueOrDefault(pick.Code) ?? new List<int>();
+                var ownOk = ids.Any(mine.Contains);
+                // Se cumple con estar en la lista de su actividad o en cualquier otra del mismo tipo
+                // (por ejemplo, quien fue a otra solidaria por error o por cambio de último momento).
+                var otherId = ownOk ? 0 : (typeIds.GetValueOrDefault(type) ?? new List<int>()).FirstOrDefault(mine.Contains);
                 var anyLoaded = ids.Any(i => recordCount.ContainsKey(i));
-                if (ids.Count == 0 || (onlyLoaded && !anyLoaded)) { cells[type] = $"{pick.Code} sin cargar"; continue; }
+                if (otherId == 0 && (ids.Count == 0 || (onlyLoaded && !anyLoaded))) { cells[type] = $"{pick.Code} sin cargar"; continue; }
                 expected++;
-                var ok = ids.Any(mine.Contains);
+                var ok = ownOk || otherId != 0;
                 if (ok) present++;
-                cells[type] = $"{pick.Code} {(ok ? "✓" : "✗")}";
+                cells[type] = ownOk ? $"{pick.Code} ✓"
+                    : otherId != 0 ? $"{pick.Code} ✓ (asistió a {codeOfSession[otherId]})"
+                    : $"{pick.Code} ✗";
             }
 
             var percent = expected == 0 ? 0 : Math.Round(100.0 * present / expected, 1);
@@ -156,6 +171,7 @@ public static class AttendanceCertificates
             report.OnlyLoaded
                 ? "Este archivo cuenta SOLO las tomas que ya tienen asistencia cargada; las demás figuran como 'sin cargar'."
                 : "Este archivo cuenta TODAS las tomas esperadas; una toma sin asistencia cargada cuenta como ausencia para todos.",
+            "En Taller, Simultánea, Solidaria y Visita técnica alcanza con estar presente en la lista de su actividad o en la de otra actividad del mismo tipo (se indica entre paréntesis).",
             "Solo se incluyen inscriptos con pago confirmado.",
             "—: la persona no tenía esa actividad. ✓ presente, ✗ ausente.",
         };
